@@ -1,178 +1,118 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
-public class PlayerMovement : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float moveSpeed = 8f;
+    [Header("Movimentação")]
+    public float speed = 8f;
     public float jumpForce = 12f;
-    public float boomJumpForce = 16f; // Salto mais alto durante o run-up
-    public float slideForce = 10f;
-    public float slideDuration = 0.5f;
+    public bool isServing = true; // Necessário para o EnemyAI não dar erro
 
-    [Header("Detection Settings")]
+    [Header("Configurações de Salto")]
     public Transform groundCheck;
-    public float groundCheckRadius = 0.2f;
+    public float checkRadius = 0.2f;
     public LayerMask groundLayer;
-
-    // Estados
-    private bool isGrounded;
-    private bool isSliding;
-    private bool isReceiving;
-    private bool isSpiking;
-    private bool isBlocking;
-    private float slideTimer;
-    private float horizontalInput;
-
-    [Header("Attack Settings")]
-    public float spikeForce = 20f;
-    public float spikeRadius = 1.5f;
+    
+    [Header("Referências da Bola")]
+    public BallController ballScript; 
+    public Transform ballHoldPoint; 
+    public float hitRange = 2f;
     public LayerMask ballLayer;
 
-    // Componentes
     private Rigidbody2D rb;
-    private Animator anim; // Opcional, para animações
+    private bool isGrounded;
+    private bool canDoubleJump;
 
-    void Awake()
+    void Start()
     {
         rb = GetComponent<Rigidbody2D>();
-        anim = GetComponent<Animator>();
+        
+        // Se começar sacando, prende a bola na mão
+        if (isServing && ballScript != null)
+        {
+            ballScript.SetToServing(ballHoldPoint);
+        }
     }
 
     void Update()
     {
-        if (isSliding) return;
+        // 1. Verificação de Chão
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
 
-        // Inputs
-        horizontalInput = Input.GetAxisRaw("Horizontal");
+        if (isGrounded) canDoubleJump = true;
 
-        // Salto (Espaço)
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        // 2. Lógica de Serviço (Sacar)
+        if (isServing)
         {
-            Jump();
-        }
-
-        // Receber (S ou Seta Baixo)
-        isReceiving = Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow);
-
-        // Slide/Mergulho (Shift ou J)
-        if ((Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.J)) && isGrounded && !isSliding)
-        {
-            StartSlide();
-        }
-
-        // Ataque/Spike (Z ou K) - No ar
-        if ((Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.K)) && !isGrounded)
-        {
-            PerformSpike();
-        }
-
-        // Bloqueio (Espaço no chão ou tecla dedicada)
-        isBlocking = Input.GetKey(KeyCode.X) || Input.GetKey(KeyCode.L);
-
-        UpdateAnimations();
-    }
-
-    void FixedUpdate()
-    {
-        CheckGround();
-
-        if (isSliding)
-        {
-            HandleSlide();
-        }
-        else if (!isReceiving)
-        {
-            // Movimento normal
-            rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
-        }
-        else
-        {
-            // Se estiver recebendo, fica parado ou move-se muito devagar
+            // O boneco fica parado enquanto saca
             rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-        }
-    }
 
-    private void Jump()
-    {
-        // Mecânica de "Boom Jump": Se estiver correndo (input horizontal significativo), pula mais alto
-        float currentJumpForce = Mathf.Abs(horizontalInput) > 0.1f ? boomJumpForce : jumpForce;
-        
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, currentJumpForce);
-        
-        // Feedback visual/partículas podem ser adicionados aqui
-        Debug.Log(currentJumpForce == boomJumpForce ? "BOOM JUMP!" : "Normal Jump");
-    }
-
-    private void StartSlide()
-    {
-        isSliding = true;
-        slideTimer = slideDuration;
-        
-        // Direção do slide baseada no input ou na direção que o jogador está olhando
-        float slideDir = horizontalInput != 0 ? Mathf.Sign(horizontalInput) : transform.localScale.x;
-        rb.linearVelocity = new Vector2(slideDir * slideForce, rb.linearVelocity.y);
-    }
-
-    private void HandleSlide()
-    {
-        slideTimer -= Time.fixedDeltaTime;
-        if (slideTimer <= 0)
-        {
-            isSliding = false;
-        }
-    }
-
-    private void PerformSpike()
-    {
-        isSpiking = true;
-        
-        // Detectar a bola no raio de ataque
-        Collider2D ball = Physics2D.OverlapCircle(transform.position, spikeRadius, ballLayer);
-        if (ball != null)
-        {
-            Rigidbody2D ballRb = ball.GetComponent<Rigidbody2D>();
-            if (ballRb != null)
+            if (Input.GetKeyDown(KeyCode.E))
             {
-                // Aplica força na bola (direção baseada no input ou fixa para baixo/frente)
-                Vector2 spikeDir = new Vector2(transform.localScale.x, -0.5f).normalized;
-                ballRb.linearVelocity = spikeDir * spikeForce;
-                Debug.Log("SPIKE SUCCESSFUL!");
+                PerformServe();
+            }
+            return; // Interrompe o Update aqui para não andar enquanto saca
+        }
+
+        // 3. Movimentação Normal (A e D)
+        float moveInput = Input.GetAxisRaw("Horizontal");
+        rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+
+        // 4. Pulo e Ataque (Espaço)
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (isGrounded)
+            {
+                rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            }
+            else if (canDoubleJump)
+            {
+                Smash();
             }
         }
-        
-        // Resetar estado de spike após um tempo ou animação
-        Invoke("ResetSpike", 0.3f);
+
+        // 5. Manchete (Botão E fora do saque)
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Manchete();
+        }
     }
 
-    private void ResetSpike()
+    void PerformServe()
     {
-        isSpiking = false;
+        isServing = false; // Agora o AI pode se mover!
+        ballScript.ReleaseServe(new Vector2(0.5f, 1f).normalized, 10f);
     }
 
-    private void CheckGround()
+    void Smash()
     {
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+        Collider2D hitBall = Physics2D.OverlapCircle(transform.position, hitRange, ballLayer);
+        if (hitBall != null)
+        {
+            hitBall.GetComponent<BallController>().ApplyForce(new Vector2(1f, -0.7f).normalized, 20f);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -3f);
+            canDoubleJump = false;
+        }
     }
 
-    private void UpdateAnimations()
+    void Manchete()
     {
-        if (anim == null) return;
-
-        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
-        anim.SetBool("IsGrounded", isGrounded);
-        anim.SetBool("IsReceiving", isReceiving);
-        anim.SetBool("IsSliding", isSliding);
-        anim.SetFloat("VerticalVelocity", rb.linearVelocity.y);
+        Collider2D hitBall = Physics2D.OverlapCircle(transform.position, hitRange, ballLayer);
+        if (hitBall != null)
+        {
+            // Joga a bola para cima e um pouco para frente
+            hitBall.GetComponent<BallController>().ApplyForce(new Vector2(0.3f, 1.2f).normalized, 13f);
+        }
     }
 
-    // Gizmos para ajudar a ver o GroundCheck no Editor da Unity
+    // Ajuda a visualizar o alcance do pulo e da batida no editor
     private void OnDrawGizmosSelected()
     {
         if (groundCheck != null)
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            Gizmos.DrawWireSphere(groundCheck.position, checkRadius);
+            Gizmos.color = Color.blue;
+            Gizmos.DrawWireSphere(transform.position, hitRange);
         }
     }
 }
