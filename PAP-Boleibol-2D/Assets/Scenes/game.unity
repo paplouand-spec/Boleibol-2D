@@ -144,11 +144,11 @@ Transform:
   m_GameObject: {fileID: 465151869}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.52, y: -1.02, z: 0}
-  m_LocalScale: {x: 2.5, y: 2.5, z: 2.5}
+  m_LocalPosition: {x: -5.4719996, y: -0.788, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2135475529}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &485921789
 GameObject:
@@ -1173,7 +1173,6 @@ Transform:
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 538619470}
-  - {fileID: 465151870}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &2135475530
@@ -1211,17 +1210,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 5
-  jumpForce: 12
-  isServing: 0
+  jumpForce: 50
+  isServing: 1
   groundCheck: {fileID: 465151870}
-  checkRadius: 0.2
   groundLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  ballScript: {fileID: 913431727}
-  ballHoldPoint: {fileID: 538619470}
-  hitRange: 2
-  ballLayer:
     serializedVersion: 2
     m_Bits: 0
 --- !u!70 &2135475532
@@ -1272,3 +1264,4 @@ SceneRoots:
   - {fileID: 913431725}
   - {fileID: 1641364536}
   - {fileID: 1267872529}
+  - {fileID: 465151870}
