@@ -161,7 +161,7 @@ GameObject:
   - component: {fileID: 485921792}
   - component: {fileID: 485921791}
   - component: {fileID: 485921790}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Ground
   m_TagString: Ground
   m_Icon: {fileID: 0}
@@ -454,8 +454,40 @@ Transform:
   m_LocalPosition: {x: 0, y: -1.09, z: 0}
   m_LocalScale: {x: 0.2, y: 3, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 907978010}
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &907978009
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 907978010}
+  m_Layer: 0
+  m_Name: netcheck
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &907978010
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 907978009}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.35, z: 0}
+  m_LocalScale: {x: 5, y: 0.33333334, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 561112928}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &913431723
 GameObject:
@@ -563,11 +595,11 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 1
+  m_Mass: 1.5
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_GravityScale: 1
-  m_Material: {fileID: 0}
+  m_GravityScale: 3
+  m_Material: {fileID: 6200000, guid: 0957bce888417684ca5ac024a06da4f4, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -1007,14 +1039,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26eb78ae8ecd7cd4c85aa73f4e77b37b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAI
+  player: {fileID: 0}
+  ball: {fileID: 913431725}
+  netPosition: {fileID: 907978010}
   speed: 5
   jumpForce: 11
-  ball: {fileID: 913431725}
+  recuoDefesa: 3
+  botTouchCount: 0
+  touchCooldown: 0.5
   groundLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   groundCheck: {fileID: 485921792}
-  player: {fileID: 2135475531}
 --- !u!70 &1684366399
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -1210,12 +1246,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 5
-  jumpForce: 50
+  jumpForce: 14
   isServing: 1
   groundCheck: {fileID: 465151870}
+  checkRadius: 0.4
   groundLayer:
     serializedVersion: 2
+    m_Bits: 64
+  ballLayer:
+    serializedVersion: 2
     m_Bits: 0
+  playerTouchCount: 3
+  hitRange: 2
+  ballScript: {fileID: 913431727}
+  ballHoldPoint: {fileID: 538619470}
 --- !u!70 &2135475532
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
