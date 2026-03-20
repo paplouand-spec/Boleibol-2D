@@ -701,12 +701,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4af2f920ee6dcc48af8cc10588e5b26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  mainMixer: {fileID: 0}
-  masterVolumeSlider: {fileID: 0}
-  musicVolumeSlider: {fileID: 0}
-  sfxVolumeSlider: {fileID: 0}
   fullscreenToggle: {fileID: 1678687569}
-  controlsPanel: {fileID: 0}
 --- !u!1 &340738575
 GameObject:
   m_ObjectHideFlags: 0
@@ -2349,8 +2344,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 285046551}
-        m_TargetAssemblyTypeName: SettingsMenu, Assembly-CSharp
-        m_MethodName: SetFullscreen
+        m_TargetAssemblyTypeName: SettingsManager, Assembly-CSharp
+        m_MethodName: set_enabled
         m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2358,9 +2353,9 @@ MonoBehaviour:
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
-          m_BoolArgument: 0
+          m_BoolArgument: 1
         m_CallState: 2
-  m_IsOn: 0
+  m_IsOn: 1
 --- !u!1 &1734604414
 GameObject:
   m_ObjectHideFlags: 0
@@ -2481,7 +2476,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1874136715}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 436b08ad65e057a49a29eba2d9dd7e09, type: 3}
   m_Name: 
