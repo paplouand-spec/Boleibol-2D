@@ -2,106 +2,194 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movimentação")]
-    public float speed = 10f;
-    public float jumpForce = 15f;
-    public bool isServing = true; 
+    [Header("Movimentacao")]
+    public float speed = 6f;
+    public float jumpForce = 14f;
+    public bool isServing = true;
 
-    [Header("Detecção e Física")]
+    [Header("Servico")]
+    public float serveForce = 18f;
+
+    [Header("Deteccao e Fisica")]
     public Transform groundCheck;
     public float checkRadius = 0.4f;
     public LayerMask groundLayer;
     public LayerMask ballLayer;
+    public Transform netPosition;
 
-    [Header("Sistema de Voleibol (3 Toques)")]
-    public int playerTouchCount = 0; 
-    public float hitRange = 2.5f;
+    [Header("Sistema de Voleibol")]
+    public int playerTouchCount = 0;
+    public float hitRange = 2.1f;
+    public float inputTouchCooldown = 0.1f;
+    public float receiveForce = 10.5f;
+    public float setForce = 12.5f;
+    public float sendForce = 15f;
+    public float spikeForce = 22f;
 
-    [Header("Referências")]
+    [Header("Referencias")]
     public BallController ballScript;
     public Transform ballHoldPoint;
-    
+
     private Rigidbody2D rb;
     private Animator anim;
     private bool isGrounded;
+    private float lastHitInputTime = -999f;
+    private Vector3 baseScale;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
-        rb.gravityScale = 4.0f;
+        baseScale = transform.localScale;
+        rb.gravityScale = 4f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
-        if (isServing && ballScript != null)
+        AutoDetectReferences();
+
+        if (isServing && ballScript != null && ballHoldPoint != null)
             ballScript.SetToServing(ballHoldPoint);
     }
 
     void Update()
     {
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
-        if (anim) anim.SetBool("isGrounded", isGrounded);
+        AutoDetectReferences();
+
+        if (groundCheck != null)
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
+
+        if (anim != null)
+            anim.SetBool("isGrounded", isGrounded);
+
+        if (ballScript != null)
+            playerTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
+
+        HandleMovement();
 
         if (isServing)
         {
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
-            if (Input.GetKeyDown(KeyCode.E)) PerformServe();
-            return; 
+            if (Input.GetKeyDown(KeyCode.E))
+                PerformServe();
+
+            return;
         }
 
-        HandleMovement();
         HandleActions();
     }
 
     void HandleMovement()
     {
-        float moveInput = Input.GetAxisRaw("Horizontal");
+        float moveInput = 0f;
+
+        if (Input.GetKey(KeyCode.A))
+            moveInput -= 1f;
+
+        if (Input.GetKey(KeyCode.D))
+            moveInput += 1f;
+
         rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
 
-        if (moveInput > 0) transform.localScale = new Vector3(1f, 1f, 1f);
-        else if (moveInput < 0) transform.localScale = new Vector3(-1f, 1f, 1f);
+        if (moveInput > 0f)
+            transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
+        else if (moveInput < 0f)
+            transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
 
-        if (anim) anim.SetBool("isRunning", moveInput != 0);
+        if (anim != null)
+            anim.SetBool("isRunning", Mathf.Abs(moveInput) > 0.01f);
     }
 
     void HandleActions()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-            if (anim) anim.SetTrigger("jump");
+            if (isGrounded)
+                Jump();
+            else
+                TryHitBall(true);
         }
 
-        if (Input.GetKeyDown(KeyCode.E) || (Input.GetKeyDown(KeyCode.Space) && !isGrounded))
-        {
-            TryHitBall();
-        }
+        if (Input.GetKeyDown(KeyCode.E))
+            TryHitBall(false);
     }
 
-    void TryHitBall()
+    void Jump()
     {
-        Collider2D ballCollider = Physics2D.OverlapCircle(transform.position, hitRange, ballLayer);
-        if (ballCollider == null) return;
+        isGrounded = false;
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+
+        if (anim != null)
+            anim.SetTrigger("jump");
+    }
+
+    void TryHitBall(bool spikeInput)
+    {
+        if (ballScript == null || Time.time < lastHitInputTime + inputTouchCooldown)
+            return;
+
+        Collider2D ballCollider = Physics2D.OverlapCircle(GetHitCenter(), hitRange, ballLayer);
+        if (ballCollider == null)
+            return;
 
         BallController ball = ballCollider.GetComponent<BallController>();
-        
-        if (playerTouchCount == 0) 
+        if (ball == null || ball.IsBeingHeld)
+            return;
+
+        if (!BolaNoLadoDoPlayer(ball.transform.position.x))
+            return;
+
+        int currentTouches = ball.GetTouchCountFor(BallController.TeamSide.Player);
+
+        if (spikeInput)
         {
-            ball.ApplyForce(new Vector2(0.2f, 1.4f).normalized, 11f);
-            if (anim) anim.SetTrigger("manchete");
-            playerTouchCount = 1;
+            if (isGrounded || currentTouches != 2)
+                return;
+
+            if (!ball.TryRegisterTouch(BallController.TeamSide.Player, out int touchNumber) || touchNumber != 3)
+                return;
+
+            ExecutarToque(ball, touchNumber, true);
         }
-        else if (playerTouchCount == 1) 
+        else
         {
-            ball.ApplyForce(new Vector2(0.1f, 1.8f).normalized, 13f);
-            if (anim) anim.SetTrigger("manchete"); 
-            playerTouchCount = 2;
+            if (!ball.TryRegisterTouch(BallController.TeamSide.Player, out int touchNumber))
+                return;
+
+            ExecutarToque(ball, touchNumber, false);
         }
-        else 
+
+        playerTouchCount = ball.GetTouchCountFor(BallController.TeamSide.Player);
+        lastHitInputTime = Time.time;
+    }
+
+    void ExecutarToque(BallController ball, int touchNumber, bool spikeInput)
+    {
+        if (touchNumber == 1)
         {
-            ball.ApplyForce(new Vector2(1.5f, -0.8f).normalized, 25f);
-            if (anim) anim.SetTrigger("smash");
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -5f);
-            playerTouchCount = 0; 
+            ball.ApplyForce(new Vector2(0.35f, 1.2f), receiveForce);
+
+            if (anim != null)
+                anim.SetTrigger("manchete");
+        }
+        else if (touchNumber == 2)
+        {
+            ball.ApplyForce(new Vector2(0.2f, 1.7f), setForce);
+
+            if (anim != null)
+                anim.SetTrigger("manchete");
+        }
+        else if (spikeInput)
+        {
+            ball.ApplyForce(new Vector2(1.55f, -0.72f), spikeForce);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Min(rb.linearVelocity.y, -1.5f));
+
+            if (anim != null)
+                anim.SetTrigger("smash");
+        }
+        else
+        {
+            ball.ApplyForce(new Vector2(1.15f, 0.85f), sendForce);
+
+            if (anim != null)
+                anim.SetTrigger("manchete");
         }
     }
 
@@ -109,9 +197,59 @@ public class PlayerController : MonoBehaviour
     {
         isServing = false;
         playerTouchCount = 0;
+
         if (ballScript != null)
-            ballScript.ReleaseServe(new Vector2(0.4f, 1f).normalized, 45f);
-        
-        if (anim) anim.SetTrigger("serveAction");
+            ballScript.ReleaseServe(new Vector2(0.95f, 1.1f), serveForce);
+
+        if (anim != null)
+            anim.SetTrigger("serveAction");
+    }
+
+    public void PrepareServe(BallController targetBall)
+    {
+        if (targetBall != null)
+            ballScript = targetBall;
+
+        AutoDetectReferences();
+        isServing = true;
+        playerTouchCount = 0;
+        lastHitInputTime = -999f;
+
+        if (ballScript != null && ballHoldPoint != null)
+            ballScript.SetToServing(ballHoldPoint);
+    }
+
+    public void StopServing()
+    {
+        isServing = false;
+        playerTouchCount = 0;
+        lastHitInputTime = -999f;
+    }
+
+    bool BolaNoLadoDoPlayer(float ballX)
+    {
+        return netPosition == null || ballX <= netPosition.position.x + 0.45f;
+    }
+
+    Vector2 GetHitCenter()
+    {
+        float yOffset = isGrounded ? 0.75f : 1.1f;
+        return (Vector2)transform.position + new Vector2(0.35f, yOffset);
+    }
+
+    void AutoDetectReferences()
+    {
+        if (ballScript == null)
+            ballScript = FindObjectOfType<BallController>();
+
+        if (netPosition != null)
+            return;
+
+        GameObject netObject = GameObject.Find("netcheck");
+        if (netObject == null)
+            netObject = GameObject.Find("net");
+
+        if (netObject != null)
+            netPosition = netObject.transform;
     }
 }

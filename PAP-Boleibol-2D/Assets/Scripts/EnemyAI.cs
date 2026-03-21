@@ -2,106 +2,279 @@ using UnityEngine;
 
 public class EnemyAI : MonoBehaviour
 {
-    [Header("Referências")]
+    [Header("Referencias")]
     public PlayerController player;
     public Transform ball;
     public Transform netPosition;
 
     [Header("Movimento")]
-    public float speed = 9f;
-    public float jumpForce = 13f;
-    public float recuoDefesa = 2.5f;
+    public float speed = 5f;
+    public float jumpForce = 11f;
+    public float recuoDefesa = 3f;
+    public float zonaLevantamento = 1.95f;
+    public float zonaAtaque = 1.2f;
+    public float limiteDireitaCampo = 15.5f;
+
+    [Header("Servico")]
+    public float serveForce = 16.5f;
+    public float serveDelay = 0.85f;
 
     [Header("Sistema de Toques")]
     public int botTouchCount = 0;
-    private float lastTouchTime; 
-    public float touchCooldown = 0.4f; 
+    public float touchCooldown = 0.1f;
+    public float hitRange = 2.15f;
+    public float receiveForce = 8.75f;
+    public float setForce = 11.75f;
+    public float sendForce = 12.75f;
+    public float spikeForce = 18.5f;
     public LayerMask groundLayer;
     public Transform groundCheck;
 
     private Rigidbody2D rb;
+    private BallController ballScript;
+    private bool isGrounded;
+    private bool isServing;
+    private float lastTouchDecisionTime = -999f;
+    private float serveStartTime = -999f;
+    private Transform serveHoldPoint;
+
+    public bool IsServing => isServing;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+        AutoDetectReferences();
+        EnsureServeHoldPoint();
     }
 
     void Update()
     {
-        // 1. ESPERA DO SAQUE
-        if (player != null && player.isServing)
+        AutoDetectReferences();
+        EnsureServeHoldPoint();
+
+        if (ball == null || netPosition == null)
+            return;
+
+        if (groundCheck != null)
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.3f, groundLayer);
+
+        if (ballScript != null)
+            botTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Bot);
+
+        if (isServing)
+        {
+            HandleServe();
+            return;
+        }
+
+        if (player != null && player.isServing && ballScript != null && ballScript.IsBeingHeld)
         {
             MoverPara(netPosition.position.x + recuoDefesa);
             return;
         }
 
-        // 2. LÓGICA DE JOGO
-        float distToBall = ball.position.x - transform.position.x;
-        Rigidbody2D ballRb = ball.GetComponent<Rigidbody2D>();
-
-        // Se a bola cruzar a rede para o player, reseta
-        if (ball.position.x < netPosition.position.x)
+        if (ball.position.x < netPosition.position.x - 0.05f)
         {
             botTouchCount = 0;
-            MoverPara(netPosition.position.x + 4f);
+            MoverPara(netPosition.position.x + recuoDefesa);
+            return;
         }
-        else 
-        {
-            // Se a bola estiver muito rápida, o bot corre mais
-            float speedAtual = (ballRb.linearVelocity.magnitude > 20f) ? speed * 1.4f : speed;
-            rb.linearVelocity = new Vector2(Mathf.Sign(distToBall) * speedAtual, rb.linearVelocity.y);
 
-            bool isGrounded = Physics2D.OverlapCircle(groundCheck.position, 0.3f, groundLayer);
-            if (botTouchCount >= 2 && isGrounded && ball.position.y > transform.position.y + 1.5f)
-            {
-                if (Mathf.Abs(distToBall) < 1.5f)
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-            }
+        MoverPara(CalcularPosicaoAlvo());
+
+        if (botTouchCount == 2 && isGrounded && DeveSaltarParaAtacar())
+        {
+            isGrounded = false;
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         }
+
+        TentarTocarBola();
+    }
+
+    void HandleServe()
+    {
+        rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+
+        if (ballScript == null || !ballScript.IsBeingHeld)
+        {
+            isServing = false;
+            return;
+        }
+
+        if (Time.time < serveStartTime + serveDelay)
+            return;
+
+        isServing = false;
+        botTouchCount = 0;
+        ballScript.ReleaseServe(new Vector2(-0.95f, 1.08f), serveForce);
     }
 
     void MoverPara(float targetX)
     {
         float distancia = targetX - transform.position.x;
-        if (Mathf.Abs(distancia) > 0.2f)
+
+        if (Mathf.Abs(distancia) > 0.15f)
             rb.linearVelocity = new Vector2(Mathf.Sign(distancia) * speed, rb.linearVelocity.y);
         else
-            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+            rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+    float CalcularPosicaoAlvo()
     {
-        if (collision.gameObject.CompareTag("Ball"))
+        float minX = netPosition.position.x + 0.8f;
+        float maxX = Mathf.Max(minX, limiteDireitaCampo);
+
+        if (ballScript == null)
+            return Mathf.Clamp(netPosition.position.x + recuoDefesa, minX, maxX);
+
+        int currentTouches = ballScript.GetTouchCountFor(BallController.TeamSide.Bot);
+
+        if (currentTouches == 0)
+            return Mathf.Clamp(ball.position.x + 0.15f, minX, maxX);
+
+        if (currentTouches == 1)
+            return Mathf.Clamp(netPosition.position.x + zonaLevantamento, minX, maxX);
+
+        return Mathf.Clamp(netPosition.position.x + zonaAtaque, minX, maxX);
+    }
+
+    bool DeveSaltarParaAtacar()
+    {
+        if (ballScript == null)
+            return false;
+
+        float distancia = Mathf.Abs(ball.position.x - transform.position.x);
+        bool bolaAlta = ball.position.y > transform.position.y + 1f;
+        bool bolaADescer = ballScript.Velocity.y <= 0.5f;
+        return distancia < 1.25f && bolaAlta && bolaADescer;
+    }
+
+    void TentarTocarBola()
+    {
+        if (ballScript == null || Time.time < lastTouchDecisionTime + touchCooldown)
+            return;
+
+        if (Vector2.Distance(GetHitCenter(), (Vector2)ball.position) > hitRange)
+            return;
+
+        int currentTouches = ballScript.GetTouchCountFor(BallController.TeamSide.Bot);
+        bool spikeInput = !isGrounded && currentTouches == 2;
+
+        if (spikeInput)
         {
-            if (Time.time > lastTouchTime + touchCooldown)
-            {
-                // Zera a velocidade da bola para o saque de 45f não atravessar o bot
-                collision.gameObject.GetComponent<Rigidbody2D>().linearVelocity = Vector2.zero;
-                
-                ExecutarToque();
-                lastTouchTime = Time.time;
-            }
+            if (!ballScript.TryRegisterTouch(BallController.TeamSide.Bot, out int touchNumber) || touchNumber != 3)
+                return;
+
+            ExecutarToque(touchNumber, true);
+        }
+        else
+        {
+            if (!ballScript.TryRegisterTouch(BallController.TeamSide.Bot, out int touchNumber))
+                return;
+
+            ExecutarToque(touchNumber, false);
+        }
+
+        botTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Bot);
+        lastTouchDecisionTime = Time.time;
+    }
+
+    void ExecutarToque(int touchNumber, bool spikeInput)
+    {
+        if (touchNumber == 1)
+        {
+            ballScript.ApplyForce(new Vector2(-0.18f, 1.45f), receiveForce);
+        }
+        else if (touchNumber == 2)
+        {
+            // Levantamento mais alto para dar tempo ao jogador.
+            ballScript.ApplyForce(new Vector2(-0.05f, 2.55f), setForce);
+        }
+        else if (spikeInput)
+        {
+            ballScript.ApplyForce(new Vector2(-1.3f, -0.55f), spikeForce);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, Mathf.Min(rb.linearVelocity.y, -1.5f));
+        }
+        else
+        {
+            ballScript.ApplyForce(new Vector2(-0.95f, 0.95f), sendForce);
         }
     }
 
-    void ExecutarToque()
+    Vector2 GetHitCenter()
     {
-        BallController ballScript = ball.GetComponent<BallController>();
-        
-        if (botTouchCount == 0) 
+        float yOffset = isGrounded ? 0.8f : 1.1f;
+        return (Vector2)transform.position + new Vector2(-0.35f, yOffset);
+    }
+
+    public void PrepareServe(BallController targetBall)
+    {
+        if (targetBall != null)
+            ballScript = targetBall;
+
+        if (ballScript != null)
+            ball = ballScript.transform;
+
+        AutoDetectReferences();
+        EnsureServeHoldPoint();
+
+        isServing = true;
+        botTouchCount = 0;
+        lastTouchDecisionTime = -999f;
+        serveStartTime = Time.time;
+
+        if (ballScript != null && serveHoldPoint != null)
+            ballScript.SetToServing(serveHoldPoint);
+    }
+
+    public void StopServing()
+    {
+        isServing = false;
+        botTouchCount = 0;
+        lastTouchDecisionTime = -999f;
+        serveStartTime = -999f;
+    }
+
+    void EnsureServeHoldPoint()
+    {
+        if (serveHoldPoint != null)
+            return;
+
+        Transform existingPoint = transform.Find("BotServePoint");
+        if (existingPoint != null)
         {
-            ballScript.ApplyForce(new Vector2(-0.2f, 1.7f).normalized, 14f);
-            botTouchCount = 1;
+            serveHoldPoint = existingPoint;
+            return;
         }
-        else if (botTouchCount == 1) 
-        {
-            ballScript.ApplyForce(new Vector2(0f, 1.9f).normalized, 15f);
-            botTouchCount = 2;
-        }
-        else 
-        {
-            ballScript.ApplyForce(new Vector2(-1.6f, -0.9f).normalized, 24f);
-            botTouchCount = 0;
-        }
+
+        GameObject holdObject = new GameObject("BotServePoint");
+        holdObject.transform.SetParent(transform);
+        holdObject.transform.localPosition = new Vector3(-0.65f, 0.95f, 0f);
+        holdObject.transform.localRotation = Quaternion.identity;
+        holdObject.transform.localScale = Vector3.one;
+        serveHoldPoint = holdObject.transform;
+    }
+
+    void AutoDetectReferences()
+    {
+        if (player == null)
+            player = FindObjectOfType<PlayerController>();
+
+        if (ballScript == null && ball != null)
+            ballScript = ball.GetComponent<BallController>();
+
+        if (ball == null && ballScript != null)
+            ball = ballScript.transform;
+
+        if (netPosition != null)
+            return;
+
+        GameObject netObject = GameObject.Find("netcheck");
+        if (netObject == null)
+            netObject = GameObject.Find("net");
+
+        if (netObject != null)
+            netPosition = netObject.transform;
     }
 }
