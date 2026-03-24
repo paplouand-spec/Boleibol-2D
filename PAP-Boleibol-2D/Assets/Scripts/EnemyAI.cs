@@ -18,9 +18,10 @@ public class EnemyAI : MonoBehaviour
     public float limiteDireitaCampo = 15.5f;
 
     [Header("Servico")]
-    public float serveForce = 16.5f;
+    public float serveForce = 18.5f;
     public float serveDelay = 0.85f;
-    public float serveBackOffset = 0.75f;
+    public float serveBackOffset = 0.55f;
+    public float serveRecoveryTime = 0.45f;
 
     [Header("Sistema de Toques")]
     public int botTouchCount = 0;
@@ -37,15 +38,17 @@ public class EnemyAI : MonoBehaviour
     private BallController ballScript;
     private bool isGrounded;
     private bool isServing;
-    private float lastTouchDecisionTime = -999f;
+    private float nextAllowedBallTouchTime = -999f;
     private float serveStartTime = -999f;
     private Transform serveHoldPoint;
+    private Vector3 baseScale;
 
     public bool IsServing => isServing;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        baseScale = transform.localScale;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         AutoDetectReferences();
         EnsureGroundCheck();
@@ -99,18 +102,12 @@ public class EnemyAI : MonoBehaviour
 
     void HandleServe()
     {
+        OrientarPara(-1f);
+
         if (ballScript == null || !ballScript.IsBeingHeld)
         {
             isServing = false;
             serveStartTime = -999f;
-            return;
-        }
-
-        float serveTargetX = GetServePositionX();
-        if (Mathf.Abs(transform.position.x - serveTargetX) > 0.15f)
-        {
-            serveStartTime = -999f;
-            MoverPara(serveTargetX);
             return;
         }
 
@@ -128,7 +125,8 @@ public class EnemyAI : MonoBehaviour
         isServing = false;
         serveStartTime = -999f;
         botTouchCount = 0;
-        ballScript.ReleaseServe(new Vector2(-0.95f, 1.08f), serveForce);
+        nextAllowedBallTouchTime = Time.time + serveRecoveryTime;
+        ballScript.ReleaseServe(new Vector2(-0.95f, 1.1f), serveForce);
     }
 
     void MoverPara(float targetX)
@@ -136,7 +134,10 @@ public class EnemyAI : MonoBehaviour
         float distancia = targetX - transform.position.x;
 
         if (Mathf.Abs(distancia) > 0.15f)
+        {
+            OrientarPara(Mathf.Sign(distancia));
             rb.linearVelocity = new Vector2(Mathf.Sign(distancia) * speed, rb.linearVelocity.y);
+        }
         else
             rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
     }
@@ -173,7 +174,7 @@ public class EnemyAI : MonoBehaviour
 
     void TentarTocarBola()
     {
-        if (ballScript == null || Time.time < lastTouchDecisionTime + touchCooldown)
+        if (ballScript == null || Time.time < nextAllowedBallTouchTime)
             return;
 
         if (Vector2.Distance(GetHitCenter(), (Vector2)ball.position) > hitRange)
@@ -198,7 +199,7 @@ public class EnemyAI : MonoBehaviour
         }
 
         botTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Bot);
-        lastTouchDecisionTime = Time.time;
+        nextAllowedBallTouchTime = Time.time + touchCooldown;
     }
 
     void ExecutarToque(int touchNumber, bool spikeInput)
@@ -240,9 +241,14 @@ public class EnemyAI : MonoBehaviour
         AutoDetectReferences();
         EnsureServeHoldPoint();
 
+        float serveX = GetServePositionX();
+        transform.position = new Vector3(serveX, transform.position.y, transform.position.z);
+        rb.linearVelocity = Vector2.zero;
+        OrientarPara(-1f);
+
         isServing = true;
         botTouchCount = 0;
-        lastTouchDecisionTime = -999f;
+        nextAllowedBallTouchTime = -999f;
         serveStartTime = -999f;
 
         if (ballScript != null && serveHoldPoint != null)
@@ -253,28 +259,30 @@ public class EnemyAI : MonoBehaviour
     {
         isServing = false;
         botTouchCount = 0;
-        lastTouchDecisionTime = -999f;
+        nextAllowedBallTouchTime = -999f;
         serveStartTime = -999f;
     }
 
     void EnsureServeHoldPoint()
     {
-        if (serveHoldPoint != null)
-            return;
-
-        Transform existingPoint = transform.Find("BotServePoint");
-        if (existingPoint != null)
+        if (serveHoldPoint == null)
         {
-            serveHoldPoint = existingPoint;
-            return;
+            Transform existingPoint = transform.Find("BotServePoint");
+            if (existingPoint != null)
+            {
+                serveHoldPoint = existingPoint;
+            }
+            else
+            {
+                GameObject holdObject = new GameObject("BotServePoint");
+                holdObject.transform.SetParent(transform);
+                serveHoldPoint = holdObject.transform;
+            }
         }
 
-        GameObject holdObject = new GameObject("BotServePoint");
-        holdObject.transform.SetParent(transform);
-        holdObject.transform.localPosition = new Vector3(-0.65f, 0.95f, 0f);
-        holdObject.transform.localRotation = Quaternion.identity;
-        holdObject.transform.localScale = Vector3.one;
-        serveHoldPoint = holdObject.transform;
+        serveHoldPoint.localPosition = new Vector3(0.45f, 0.95f, 0f);
+        serveHoldPoint.localRotation = Quaternion.identity;
+        serveHoldPoint.localScale = Vector3.one;
     }
 
     float GetServePositionX()
@@ -290,6 +298,14 @@ public class EnemyAI : MonoBehaviour
             return rightBoundary.position.x - 0.9f;
 
         return limiteDireitaCampo;
+    }
+
+    void OrientarPara(float direction)
+    {
+        if (direction > 0f)
+            transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
+        else if (direction < 0f)
+            transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
     }
 
     void EnsureGroundCheck()

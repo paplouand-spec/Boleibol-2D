@@ -165,7 +165,7 @@ public class PlayerController : MonoBehaviour
     {
         if (touchNumber == 1)
         {
-            ball.ApplyForce(new Vector2(0.35f, 1.2f), receiveForce);
+            ball.ApplyForce(new Vector2(0.08f, 1.75f), receiveForce);
 
             if (anim != null)
                 anim.SetTrigger("manchete");
