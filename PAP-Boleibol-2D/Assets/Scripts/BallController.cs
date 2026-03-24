@@ -13,6 +13,7 @@ public class BallController : MonoBehaviour
     public float rallyGravityScale = 2.75f;
     public float maxBallSpeed = 16.5f;
     public float sharedTouchCooldown = 0.08f;
+    public float pointEndDelay = 2f;
     public float failSafeResetY = -8f;
     public Transform netPosition;
 
@@ -28,6 +29,8 @@ public class BallController : MonoBehaviour
     private int currentTouchCount;
     private float lastTouchTime = -999f;
     private bool pointEnding;
+    private float pointResolveTime = -999f;
+    private float pendingLandingX;
 
     public bool IsBeingHeld => isBeingHeld;
     public Vector2 Velocity => rb != null ? rb.linearVelocity : Vector2.zero;
@@ -57,7 +60,10 @@ public class BallController : MonoBehaviour
         }
 
         if (!pointEnding && transform.position.y < failSafeResetY)
-            ResolverPonto(transform.position.x);
+            IniciarFimDoPonto(transform.position.x);
+
+        if (pointEnding && Time.time >= pointResolveTime)
+            ResolverPonto();
     }
 
     void FixedUpdate()
@@ -75,7 +81,7 @@ public class BallController : MonoBehaviour
             return;
 
         if (collision.gameObject.CompareTag("Ground"))
-            ResolverPonto(transform.position.x);
+            IniciarFimDoPonto(transform.position.x);
     }
 
     public int GetTouchCountFor(TeamSide team)
@@ -116,6 +122,7 @@ public class BallController : MonoBehaviour
     {
         ResetTouches();
         pointEnding = false;
+        pointResolveTime = -999f;
         isBeingHeld = true;
         holdPoint = targetPoint;
         rb.simulated = true;
@@ -154,15 +161,23 @@ public class BallController : MonoBehaviour
             ballCollider.isTrigger = false;
     }
 
-    void ResolverPonto(float landingX)
+    void IniciarFimDoPonto(float landingX)
     {
         if (pointEnding)
             return;
 
         pointEnding = true;
+        pendingLandingX = landingX;
+        pointResolveTime = Time.time + pointEndDelay;
         ResetTouches();
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
+        rb.simulated = false;
+    }
+
+    void ResolverPonto()
+    {
+        float landingX = pendingLandingX;
 
         if (enemy != null)
             enemy.StopServing();
