@@ -5783,7 +5783,7 @@ MonoBehaviour:
     m_Bits: 64
   ballLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 1
   netPosition: {fileID: 907978010}
   playerTouchCount: 3
   hitRange: 2

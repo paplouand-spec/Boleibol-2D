@@ -1,25 +1,25 @@
 fileFormatVersion: 2
-guid: 98904c4ae2cbe7c4f9ec6c9a178e866b
+guid: 78a1f40e0f450c646a3bec2fd969a452
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 217509912580418110
-    second: male_hero_template-spike-export_0
+      213: -6460024039684325995
+    second: male_hero_template-jump 1_0
   - first:
-      213: -1559770096301731695
-    second: male_hero_template-spike-export_1
+      213: -3826037138230260998
+    second: male_hero_template-jump 1_1
   - first:
-      213: -4649108815745403157
-    second: male_hero_template-spike-export_2
+      213: 8518017840420224800
+    second: male_hero_template-jump 1_2
   - first:
-      213: 9009071543316582283
-    second: male_hero_template-spike-export_3
+      213: -1655265544453426460
+    second: male_hero_template-jump 1_3
   - first:
-      213: 6006951847349942428
-    second: male_hero_template-spike-export_4
+      213: 4735396529786160962
+    second: male_hero_template-jump 1_4
   - first:
-      213: -3151045945617863671
-    second: male_hero_template-spike-export_5
+      213: 18249802148788724
+    second: male_hero_template-jump 1_5
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -115,57 +115,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: male_hero_template-spike-export_0
+      name: male_hero_template-jump 1_0
       rect:
         serializedVersion: 2
-        x: 17
-        y: 13
-        width: 30
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e3a6b72fc10c40300800000000000000
-      internalID: 217509912580418110
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: male_hero_template-spike-export_1
-      rect:
-        serializedVersion: 2
-        x: 82
-        y: 13
-        width: 35
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 19098a68c559a5ae0800000000000000
-      internalID: -1559770096301731695
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: male_hero_template-spike-export_2
-      rect:
-        serializedVersion: 2
-        x: 146
-        y: 13
+        x: 20
+        y: 15
         width: 33
-        height: 36
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -174,20 +130,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: be6bb530a2c0b7fb0800000000000000
-      internalID: -4649108815745403157
+      spriteID: 59db122dc526956a0800000000000000
+      internalID: -6460024039684325995
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: male_hero_template-spike-export_3
+      name: male_hero_template-jump 1_1
       rect:
         serializedVersion: 2
-        x: 210
-        y: 13
-        width: 35
-        height: 37
+        x: 84
+        y: 15
+        width: 22
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -196,20 +152,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b8f077726d6a60d70800000000000000
-      internalID: 9009071543316582283
+      spriteID: afa45567e7f27eac0800000000000000
+      internalID: -3826037138230260998
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: male_hero_template-spike-export_4
+      name: male_hero_template-jump 1_2
       rect:
         serializedVersion: 2
-        x: 273
-        y: 13
-        width: 36
-        height: 36
+        x: 141
+        y: 15
+        width: 29
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -218,20 +174,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c987b2401eafc5350800000000000000
-      internalID: 6006951847349942428
+      spriteID: 02fffa07814163670800000000000000
+      internalID: 8518017840420224800
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: male_hero_template-spike-export_5
+      name: male_hero_template-jump 1_3
       rect:
         serializedVersion: 2
-        x: 337
-        y: 13
-        width: 36
-        height: 36
+        x: 205
+        y: 15
+        width: 29
+        height: 30
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -240,8 +196,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 90c238c486c3544d0800000000000000
-      internalID: -3151045945617863671
+      spriteID: 4e2f8edd1c05709e0800000000000000
+      internalID: -1655265544453426460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: male_hero_template-jump 1_4
+      rect:
+        serializedVersion: 2
+        x: 276
+        y: 15
+        width: 22
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 247858cfd0287b140800000000000000
+      internalID: 4735396529786160962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: male_hero_template-jump 1_5
+      rect:
+        serializedVersion: 2
+        x: 339
+        y: 15
+        width: 33
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f9bc4e2916d04000800000000000000
+      internalID: 18249802148788724
       vertices: []
       indices: 
       edges: []
@@ -260,12 +260,12 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      male_hero_template-spike-export_0: 217509912580418110
-      male_hero_template-spike-export_1: -1559770096301731695
-      male_hero_template-spike-export_2: -4649108815745403157
-      male_hero_template-spike-export_3: 9009071543316582283
-      male_hero_template-spike-export_4: 6006951847349942428
-      male_hero_template-spike-export_5: -3151045945617863671
+      male_hero_template-jump 1_0: -6460024039684325995
+      male_hero_template-jump 1_1: -3826037138230260998
+      male_hero_template-jump 1_2: 8518017840420224800
+      male_hero_template-jump 1_3: -1655265544453426460
+      male_hero_template-jump 1_4: 4735396529786160962
+      male_hero_template-jump 1_5: 18249802148788724
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

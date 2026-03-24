@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     [Header("Deteccao e Fisica")]
     public Transform groundCheck;
     public float checkRadius = 0.4f;
+    public float groundCheckYOffset = -0.85f;
     public LayerMask groundLayer;
     public LayerMask ballLayer;
     public Transform netPosition;
@@ -45,6 +46,8 @@ public class PlayerController : MonoBehaviour
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         AutoDetectReferences();
+        EnsureGroundCheck();
+        EnsureBallLayer();
 
         if (isServing && ballScript != null && ballHoldPoint != null)
             ballScript.SetToServing(ballHoldPoint);
@@ -53,6 +56,8 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         AutoDetectReferences();
+        EnsureGroundCheck();
+        EnsureBallLayer();
 
         if (groundCheck != null)
             isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
@@ -125,11 +130,7 @@ public class PlayerController : MonoBehaviour
         if (ballScript == null || Time.time < lastHitInputTime + inputTouchCooldown)
             return;
 
-        Collider2D ballCollider = Physics2D.OverlapCircle(GetHitCenter(), hitRange, ballLayer);
-        if (ballCollider == null)
-            return;
-
-        BallController ball = ballCollider.GetComponent<BallController>();
+        BallController ball = GetTargetBallInRange();
         if (ball == null || ball.IsBeingHeld)
             return;
 
@@ -251,5 +252,53 @@ public class PlayerController : MonoBehaviour
 
         if (netObject != null)
             netPosition = netObject.transform;
+    }
+
+    BallController GetTargetBallInRange()
+    {
+        Vector2 hitCenter = GetHitCenter();
+
+        if (ballLayer.value != 0)
+        {
+            Collider2D detectedCollider = Physics2D.OverlapCircle(hitCenter, hitRange, ballLayer);
+            if (detectedCollider != null)
+            {
+                BallController detectedBall = detectedCollider.GetComponent<BallController>();
+                if (detectedBall != null)
+                    return detectedBall;
+            }
+        }
+
+        if (ballScript == null)
+            return null;
+
+        return Vector2.Distance(hitCenter, ballScript.transform.position) <= hitRange
+            ? ballScript
+            : null;
+    }
+
+    void EnsureBallLayer()
+    {
+        if (ballLayer.value == 0 && ballScript != null)
+            ballLayer = 1 << ballScript.gameObject.layer;
+    }
+
+    void EnsureGroundCheck()
+    {
+        if (groundCheck != null && groundCheck.parent == transform)
+            return;
+
+        Transform existingCheck = transform.Find("PlayerGroundCheck");
+        if (existingCheck == null)
+        {
+            GameObject checkObject = new GameObject("PlayerGroundCheck");
+            existingCheck = checkObject.transform;
+            existingCheck.SetParent(transform);
+            existingCheck.localRotation = Quaternion.identity;
+            existingCheck.localScale = Vector3.one;
+        }
+
+        existingCheck.localPosition = new Vector3(0f, groundCheckYOffset, 0f);
+        groundCheck = existingCheck;
     }
 }
