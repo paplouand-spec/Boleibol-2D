@@ -322,15 +322,15 @@ public class EnemyAI : MonoBehaviour
         if (ball == null && ballScript != null)
             ball = ballScript.transform;
 
-        if (netPosition != null)
-            return;
+        if (netPosition == null)
+        {
+            GameObject netObject = GameObject.Find("netcheck");
+            if (netObject == null)
+                netObject = GameObject.Find("net");
 
-        GameObject netObject = GameObject.Find("netcheck");
-        if (netObject == null)
-            netObject = GameObject.Find("net");
-
-        if (netObject != null)
-            netPosition = netObject.transform;
+            if (netObject != null)
+                netPosition = netObject.transform;
+        }
 
         if (rightBoundary == null)
         {
