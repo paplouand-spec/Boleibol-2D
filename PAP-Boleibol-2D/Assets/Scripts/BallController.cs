@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class BallController : MonoBehaviour
@@ -31,9 +32,14 @@ public class BallController : MonoBehaviour
     private bool pointEnding;
     private float pointResolveTime = -999f;
     private float pendingLandingX;
+    private int playerScore;
+    private int botScore;
 
     public bool IsBeingHeld => isBeingHeld;
     public Vector2 Velocity => rb != null ? rb.linearVelocity : Vector2.zero;
+    public int PlayerScore => playerScore;
+    public int BotScore => botScore;
+    public event Action<int, int> ScoreChanged;
 
     void Awake()
     {
@@ -45,6 +51,7 @@ public class BallController : MonoBehaviour
     void Start()
     {
         AutoDetectReferences();
+        NotifyScoreChanged();
     }
 
     void Update()
@@ -185,6 +192,13 @@ public class BallController : MonoBehaviour
         bool pontoDoPlayer = netPosition == null || landingX > netPosition.position.x;
 
         if (pontoDoPlayer)
+            playerScore++;
+        else
+            botScore++;
+
+        NotifyScoreChanged();
+
+        if (pontoDoPlayer)
         {
             if (player != null)
                 player.PrepareServe(this);
@@ -216,5 +230,10 @@ public class BallController : MonoBehaviour
 
         if (netObject != null)
             netPosition = netObject.transform;
+    }
+
+    void NotifyScoreChanged()
+    {
+        ScoreChanged?.Invoke(playerScore, botScore);
     }
 }

@@ -1007,7 +1007,7 @@ Transform:
   m_GameObject: {fileID: 326334827}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.74, y: -0.18, z: 0}
+  m_LocalPosition: {x: 7.19, y: -0.18, z: 0}
   m_LocalScale: {x: 0.2, y: 31.006552, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2520,14 +2520,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2bb5449d19508b345a08550de17f26f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BallController
-  rallyGravityScale: 2
+  rallyGravityScale: 1.5
   maxBallSpeed: 24
   sharedTouchCooldown: 0.08
   pointEndDelay: 2
   failSafeResetY: -8
-  netPosition: {fileID: 0}
-  player: {fileID: 0}
-  enemy: {fileID: 0}
+  netPosition: {fileID: 2096402921}
+  player: {fileID: 2135475531}
+  enemy: {fileID: 1684366398}
 --- !u!58 &913431728
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -4481,7 +4481,7 @@ MonoBehaviour:
   player: {fileID: 2135475531}
   ball: {fileID: 913431725}
   netPosition: {fileID: 907978010}
-  rightBoundary: {fileID: 0}
+  rightBoundary: {fileID: 326334830}
   speed: 6
   jumpForce: 11
   groundCheckYOffset: -0.85
@@ -4489,7 +4489,7 @@ MonoBehaviour:
   zonaLevantamento: 2
   zonaAtaque: 2
   limiteDireitaCampo: 15.5
-  serveForce: 50
+  serveForce: 27
   serveDelay: 2
   serveBackOffset: 0.75
   serveRecoveryTime: 0.45
@@ -5780,7 +5780,7 @@ MonoBehaviour:
   speed: 5
   jumpForce: 20
   isServing: 1
-  serveForce: 30
+  serveForce: 25
   groundCheck: {fileID: 465151870}
   checkRadius: 0.4
   groundCheckYOffset: -0.85
@@ -5794,8 +5794,8 @@ MonoBehaviour:
   playerTouchCount: 3
   hitRange: 2
   inputTouchCooldown: 0.1
-  receiveForce: 25
-  setForce: 25
+  receiveForce: 21
+  setForce: 21
   sendForce: 19
   spikeForce: 30
   ballScript: {fileID: 913431727}

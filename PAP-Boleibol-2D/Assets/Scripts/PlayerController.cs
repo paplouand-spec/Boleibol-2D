@@ -99,7 +99,11 @@ public class PlayerController : MonoBehaviour
             transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
 
         if (anim != null)
-            anim.SetBool("isRunning", Mathf.Abs(moveInput) > 0.01f);
+        {
+            float horizontalSpeed = Mathf.Abs(moveInput);
+            anim.SetBool("isRunning", horizontalSpeed > 0.01f);
+            anim.SetFloat("Speed", horizontalSpeed);
+        }
     }
 
     void HandleActions()
