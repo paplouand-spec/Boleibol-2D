@@ -16,6 +16,7 @@ public class EnemyAI : MonoBehaviour
     public float zonaLevantamento = 1.95f;
     public float zonaAtaque = 1.2f;
     public float limiteDireitaCampo = 15.5f;
+    public float rightBoundaryPadding = 0.8f;
 
     [Header("Servico")]
     public float serveForce = 18.5f;
@@ -294,8 +295,8 @@ public class EnemyAI : MonoBehaviour
 
     float GetPlayableRightLimitX()
     {
-        if (rightBoundary != null)
-            return rightBoundary.position.x - 0.9f;
+        if (CourtReferences.TryGetBoundaryInnerX(rightBoundary, false, out float rightLimit))
+            return rightLimit - rightBoundaryPadding;
 
         return limiteDireitaCampo;
     }
@@ -338,21 +339,10 @@ public class EnemyAI : MonoBehaviour
         if (ball == null && ballScript != null)
             ball = ballScript.transform;
 
-        if (netPosition == null)
-        {
-            GameObject netObject = GameObject.Find("netcheck");
-            if (netObject == null)
-                netObject = GameObject.Find("net");
-
-            if (netObject != null)
-                netPosition = netObject.transform;
-        }
+        if (!CourtReferences.IsPlayableNetPosition(netPosition))
+            netPosition = CourtReferences.FindNetPosition();
 
         if (rightBoundary == null)
-        {
-            GameObject rightBoundaryObject = GameObject.Find("limit R");
-            if (rightBoundaryObject != null)
-                rightBoundary = rightBoundaryObject.transform;
-        }
+            rightBoundary = CourtReferences.FindBoundary("limit R");
     }
 }

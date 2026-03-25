@@ -221,15 +221,8 @@ public class BallController : MonoBehaviour
         if (enemy == null)
             enemy = FindObjectOfType<EnemyAI>();
 
-        if (netPosition != null)
-            return;
-
-        GameObject netObject = GameObject.Find("netcheck");
-        if (netObject == null)
-            netObject = GameObject.Find("net");
-
-        if (netObject != null)
-            netPosition = netObject.transform;
+        if (!CourtReferences.IsPlayableNetPosition(netPosition))
+            netPosition = CourtReferences.FindNetPosition();
     }
 
     void NotifyScoreChanged()

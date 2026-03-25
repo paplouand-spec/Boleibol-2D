@@ -17,6 +17,7 @@ public class PlayerController : MonoBehaviour
     public LayerMask groundLayer;
     public LayerMask ballLayer;
     public Transform netPosition;
+    public Transform leftBoundary;
 
     [Header("Sistema de Voleibol")]
     public int playerTouchCount = 0;
@@ -26,6 +27,11 @@ public class PlayerController : MonoBehaviour
     public float setForce = 12.5f;
     public float sendForce = 15f;
     public float spikeForce = 22f;
+
+    [Header("Limites e Servico")]
+    public float leftBoundaryPadding = 0.8f;
+    public float serveForwardOffset = 0.75f;
+    public float limiteEsquerdoCampo = -6.5f;
 
     [Header("Referencias")]
     public BallController ballScript;
@@ -49,8 +55,13 @@ public class PlayerController : MonoBehaviour
         EnsureGroundCheck();
         EnsureBallLayer();
 
-        if (isServing && ballScript != null && ballHoldPoint != null)
-            ballScript.SetToServing(ballHoldPoint);
+        if (isServing)
+        {
+            MoveToServePosition();
+
+            if (ballScript != null && ballHoldPoint != null)
+                ballScript.SetToServing(ballHoldPoint);
+        }
     }
 
     void Update()
@@ -219,6 +230,7 @@ public class PlayerController : MonoBehaviour
         isServing = true;
         playerTouchCount = 0;
         lastHitInputTime = -999f;
+        MoveToServePosition();
 
         if (ballScript != null && ballHoldPoint != null)
             ballScript.SetToServing(ballHoldPoint);
@@ -247,15 +259,11 @@ public class PlayerController : MonoBehaviour
         if (ballScript == null)
             ballScript = FindObjectOfType<BallController>();
 
-        if (netPosition != null)
-            return;
+        if (!CourtReferences.IsPlayableNetPosition(netPosition))
+            netPosition = CourtReferences.FindNetPosition();
 
-        GameObject netObject = GameObject.Find("netcheck");
-        if (netObject == null)
-            netObject = GameObject.Find("net");
-
-        if (netObject != null)
-            netPosition = netObject.transform;
+        if (leftBoundary == null)
+            leftBoundary = CourtReferences.FindBoundary("limit L");
     }
 
     BallController GetTargetBallInRange()
@@ -304,5 +312,39 @@ public class PlayerController : MonoBehaviour
 
         existingCheck.localPosition = new Vector3(0f, groundCheckYOffset, 0f);
         groundCheck = existingCheck;
+    }
+
+    void MoveToServePosition()
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        float serveX = GetServePositionX();
+        transform.position = new Vector3(serveX, transform.position.y, transform.position.z);
+        rb.linearVelocity = Vector2.zero;
+        OrientarPara(1f);
+    }
+
+    float GetServePositionX()
+    {
+        float minX = GetPlayableLeftLimitX();
+        float maxX = netPosition != null ? netPosition.position.x - 0.8f : transform.position.x;
+        return Mathf.Clamp(minX + serveForwardOffset, minX, maxX);
+    }
+
+    float GetPlayableLeftLimitX()
+    {
+        if (CourtReferences.TryGetBoundaryInnerX(leftBoundary, true, out float leftLimit))
+            return leftLimit + leftBoundaryPadding;
+
+        return limiteEsquerdoCampo;
+    }
+
+    void OrientarPara(float direction)
+    {
+        if (direction > 0f)
+            transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
+        else if (direction < 0f)
+            transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
     }
 }
