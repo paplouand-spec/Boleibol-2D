@@ -17,11 +17,6 @@ public class PlayerController : MonoBehaviour
     public LayerMask groundLayer;
     public LayerMask ballLayer;
     public Transform netPosition;
-    public Transform leftBoundary;
-
-    [Header("Posicionamento")]
-    public float serveBackOffset = 1.15f;
-    public float sidePadding = 0.9f;
 
     [Header("Sistema de Voleibol")]
     public int playerTouchCount = 0;
@@ -41,14 +36,12 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
     private float lastHitInputTime = -999f;
     private Vector3 baseScale;
-    private float resetPositionY;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
         baseScale = transform.localScale;
-        resetPositionY = transform.position.y;
         rb.gravityScale = 4f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
@@ -234,20 +227,6 @@ public class PlayerController : MonoBehaviour
         lastHitInputTime = -999f;
     }
 
-    public void TeleportToServePosition()
-    {
-        AutoDetectReferences();
-        TeleportToX(GetServePositionX());
-        transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
-    }
-
-    public void TeleportToReceivePosition()
-    {
-        AutoDetectReferences();
-        TeleportToX(GetReceivePositionX());
-        transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
-    }
-
     bool BolaNoLadoDoPlayer(float ballX)
     {
         return netPosition == null || ballX <= netPosition.position.x + 0.45f;
@@ -264,22 +243,15 @@ public class PlayerController : MonoBehaviour
         if (ballScript == null)
             ballScript = FindObjectOfType<BallController>();
 
-        if (netPosition == null)
-        {
-            GameObject netObject = GameObject.Find("netcheck");
-            if (netObject == null)
-                netObject = GameObject.Find("net");
+        if (netPosition != null)
+            return;
 
-            if (netObject != null)
-                netPosition = netObject.transform;
-        }
+        GameObject netObject = GameObject.Find("netcheck");
+        if (netObject == null)
+            netObject = GameObject.Find("net");
 
-        if (leftBoundary == null)
-        {
-            GameObject leftBoundaryObject = GameObject.Find("limit L");
-            if (leftBoundaryObject != null)
-                leftBoundary = leftBoundaryObject.transform;
-        }
+        if (netObject != null)
+            netPosition = netObject.transform;
     }
 
     BallController GetTargetBallInRange()
@@ -328,44 +300,5 @@ public class PlayerController : MonoBehaviour
 
         existingCheck.localPosition = new Vector3(0f, groundCheckYOffset, 0f);
         groundCheck = existingCheck;
-    }
-
-    float GetServePositionX()
-    {
-        float minX = GetPlayableLeftLimitX();
-        float maxX = netPosition != null ? netPosition.position.x - sidePadding : transform.position.x;
-        return Mathf.Clamp(minX + serveBackOffset, minX, maxX);
-    }
-
-    float GetReceivePositionX()
-    {
-        float minX = GetPlayableLeftLimitX();
-        float maxX = netPosition != null ? netPosition.position.x - sidePadding : transform.position.x;
-        return Mathf.Lerp(minX, maxX, 0.5f);
-    }
-
-    float GetPlayableLeftLimitX()
-    {
-        if (leftBoundary != null)
-            return leftBoundary.position.x + sidePadding;
-
-        return transform.position.x;
-    }
-
-    void TeleportToX(float targetX)
-    {
-        if (rb == null)
-            rb = GetComponent<Rigidbody2D>();
-
-        transform.position = new Vector3(targetX, resetPositionY, transform.position.z);
-        rb.linearVelocity = Vector2.zero;
-        rb.angularVelocity = 0f;
-        isGrounded = true;
-
-        if (anim != null)
-        {
-            anim.SetBool("isRunning", false);
-            anim.SetBool("isGrounded", true);
-        }
     }
 }

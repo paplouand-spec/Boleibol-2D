@@ -179,9 +179,6 @@ public class BallController : MonoBehaviour
     {
         float landingX = pendingLandingX;
 
-        if (player != null)
-            player.StopServing();
-
         if (enemy != null)
             enemy.StopServing();
 
@@ -190,21 +187,12 @@ public class BallController : MonoBehaviour
         if (pontoDoPlayer)
         {
             if (player != null)
-                player.TeleportToServePosition();
-
-            if (enemy != null)
-                enemy.TeleportToReceivePosition();
-
-            if (player != null)
                 player.PrepareServe(this);
         }
         else
         {
-            if (enemy != null)
-                enemy.TeleportToServePosition();
-
             if (player != null)
-                player.TeleportToReceivePosition();
+                player.StopServing();
 
             if (enemy != null)
                 enemy.PrepareServe(this);
