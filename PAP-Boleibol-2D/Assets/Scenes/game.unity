@@ -868,7 +868,7 @@ Transform:
   m_GameObject: {fileID: 235479770}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -9.69, y: -0.08, z: 0}
+  m_LocalPosition: {x: -6.53, y: -0.08, z: 0}
   m_LocalScale: {x: 0.2, y: 36.10139, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1007,7 +1007,7 @@ Transform:
   m_GameObject: {fileID: 326334827}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.74, y: -0.18, z: 0}
+  m_LocalPosition: {x: 6.22, y: -0.18, z: 0}
   m_LocalScale: {x: 0.2, y: 31.006552, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4481,7 +4481,11 @@ MonoBehaviour:
   player: {fileID: 2135475531}
   ball: {fileID: 913431725}
   netPosition: {fileID: 907978010}
+<<<<<<< Updated upstream
   rightBoundary: {fileID: 0}
+=======
+  rightBoundary: {fileID: 326334830}
+>>>>>>> Stashed changes
   speed: 6
   jumpForce: 11
   groundCheckYOffset: -0.85
@@ -4492,14 +4496,18 @@ MonoBehaviour:
   serveForce: 50
   serveDelay: 2
   serveBackOffset: 0.75
+<<<<<<< Updated upstream
   serveRecoveryTime: 0.45
+=======
+  sidePadding: 0.9
+>>>>>>> Stashed changes
   botTouchCount: 0
   touchCooldown: 0.1
   hitRange: 1
   receiveForce: 20
   setForce: 25
   sendForce: 15
-  spikeForce: 70
+  spikeForce: 50
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -5791,13 +5799,23 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   netPosition: {fileID: 907978010}
+  leftBoundary: {fileID: 235479773}
+  serveBackOffset: 1.15
+  sidePadding: 0.9
   playerTouchCount: 3
-  hitRange: 2
+  hitRange: 3
   inputTouchCooldown: 0.1
+<<<<<<< Updated upstream
   receiveForce: 25
   setForce: 25
   sendForce: 19
   spikeForce: 30
+=======
+  receiveForce: 15
+  setForce: 40
+  sendForce: 15
+  spikeForce: 22
+>>>>>>> Stashed changes
   ballScript: {fileID: 913431727}
   ballHoldPoint: {fileID: 538619470}
 --- !u!70 &2135475532

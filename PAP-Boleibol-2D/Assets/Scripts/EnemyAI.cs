@@ -20,8 +20,13 @@ public class EnemyAI : MonoBehaviour
     [Header("Servico")]
     public float serveForce = 18.5f;
     public float serveDelay = 0.85f;
+<<<<<<< Updated upstream
     public float serveBackOffset = 0.55f;
     public float serveRecoveryTime = 0.45f;
+=======
+    public float serveBackOffset = 1.15f;
+    public float sidePadding = 0.9f;
+>>>>>>> Stashed changes
 
     [Header("Sistema de Toques")]
     public int botTouchCount = 0;
@@ -41,14 +46,22 @@ public class EnemyAI : MonoBehaviour
     private float nextAllowedBallTouchTime = -999f;
     private float serveStartTime = -999f;
     private Transform serveHoldPoint;
+<<<<<<< Updated upstream
     private Vector3 baseScale;
+=======
+    private float resetPositionY;
+>>>>>>> Stashed changes
 
     public bool IsServing => isServing;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+<<<<<<< Updated upstream
         baseScale = transform.localScale;
+=======
+        resetPositionY = transform.position.y;
+>>>>>>> Stashed changes
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         AutoDetectReferences();
         EnsureGroundCheck();
@@ -111,7 +124,11 @@ public class EnemyAI : MonoBehaviour
             return;
         }
 
+<<<<<<< Updated upstream
         rb.linearVelocity = new Vector2(0f, rb.linearVelocity.y);
+=======
+        rb.linearVelocity = Vector2.zero;
+>>>>>>> Stashed changes
 
         if (!isGrounded)
             return;
@@ -239,6 +256,7 @@ public class EnemyAI : MonoBehaviour
             ball = ballScript.transform;
 
         AutoDetectReferences();
+        TeleportToServePosition();
         EnsureServeHoldPoint();
 
         float serveX = GetServePositionX();
@@ -263,8 +281,21 @@ public class EnemyAI : MonoBehaviour
         serveStartTime = -999f;
     }
 
+    public void TeleportToServePosition()
+    {
+        AutoDetectReferences();
+        TeleportToX(GetServePositionX());
+    }
+
+    public void TeleportToReceivePosition()
+    {
+        AutoDetectReferences();
+        TeleportToX(GetReceivePositionX());
+    }
+
     void EnsureServeHoldPoint()
     {
+<<<<<<< Updated upstream
         if (serveHoldPoint == null)
         {
             Transform existingPoint = transform.Find("BotServePoint");
@@ -281,21 +312,43 @@ public class EnemyAI : MonoBehaviour
         }
 
         serveHoldPoint.localPosition = new Vector3(0.45f, 0.95f, 0f);
+=======
+        Transform existingPoint = transform.Find("BotServePoint");
+        if (existingPoint != null)
+        {
+            serveHoldPoint = existingPoint;
+        }
+        else if (serveHoldPoint == null)
+        {
+            GameObject holdObject = new GameObject("BotServePoint");
+            holdObject.transform.SetParent(transform);
+            serveHoldPoint = holdObject.transform;
+        }
+
+        serveHoldPoint.localPosition = new Vector3(0.7f, 0.95f, 0f);
+>>>>>>> Stashed changes
         serveHoldPoint.localRotation = Quaternion.identity;
         serveHoldPoint.localScale = Vector3.one;
     }
 
     float GetServePositionX()
     {
-        float minX = netPosition != null ? netPosition.position.x + 0.8f : transform.position.x;
+        float minX = netPosition != null ? netPosition.position.x + sidePadding : transform.position.x;
         float maxX = Mathf.Max(minX, GetPlayableRightLimitX());
         return Mathf.Clamp(maxX - serveBackOffset, minX, maxX);
+    }
+
+    float GetReceivePositionX()
+    {
+        float minX = netPosition != null ? netPosition.position.x + sidePadding : transform.position.x;
+        float maxX = Mathf.Max(minX, GetPlayableRightLimitX());
+        return Mathf.Lerp(minX, maxX, 0.5f);
     }
 
     float GetPlayableRightLimitX()
     {
         if (rightBoundary != null)
-            return rightBoundary.position.x - 0.9f;
+            return rightBoundary.position.x - sidePadding;
 
         return limiteDireitaCampo;
     }
@@ -325,6 +378,17 @@ public class EnemyAI : MonoBehaviour
 
         existingCheck.localPosition = new Vector3(0f, groundCheckYOffset, 0f);
         groundCheck = existingCheck;
+    }
+
+    void TeleportToX(float targetX)
+    {
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        transform.position = new Vector3(targetX, resetPositionY, transform.position.z);
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        isGrounded = true;
     }
 
     void AutoDetectReferences()

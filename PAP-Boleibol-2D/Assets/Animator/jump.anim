@@ -22,6 +22,7 @@ AnimationClip:
     curve:
     - time: 0
       value: {fileID: -6460024039684325995, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
+<<<<<<< Updated upstream
     - time: 0.07692308
       value: {fileID: -3826037138230260998, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
     - time: 0.15384616
@@ -31,13 +32,28 @@ AnimationClip:
     - time: 0.30769232
       value: {fileID: 4735396529786160962, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
     - time: 0.3846154
+=======
+    - time: 0.1
+      value: {fileID: -3826037138230260998, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
+    - time: 0.2
+      value: {fileID: 8518017840420224800, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
+    - time: 0.3
+      value: {fileID: -1655265544453426460, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
+    - time: 0.4
+      value: {fileID: 4735396529786160962, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
+    - time: 0.5
+>>>>>>> Stashed changes
       value: {fileID: 18249802148788724, guid: 78a1f40e0f450c646a3bec2fd969a452, type: 3}
     attribute: m_Sprite
     path: 
     classID: 212
     script: {fileID: 0}
     flags: 2
+<<<<<<< Updated upstream
   m_SampleRate: 13
+=======
+  m_SampleRate: 10
+>>>>>>> Stashed changes
   m_WrapMode: 0
   m_Bounds:
     m_Center: {x: 0, y: 0, z: 0}
@@ -65,7 +81,11 @@ AnimationClip:
     m_AdditiveReferencePoseClip: {fileID: 0}
     m_AdditiveReferencePoseTime: 0
     m_StartTime: 0
+<<<<<<< Updated upstream
     m_StopTime: 0.46153846
+=======
+    m_StopTime: 0.6
+>>>>>>> Stashed changes
     m_OrientationOffsetY: 0
     m_Level: 0
     m_CycleOffset: 0
