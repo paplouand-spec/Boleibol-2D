@@ -2523,6 +2523,7 @@ MonoBehaviour:
   rallyGravityScale: 2
   maxBallSpeed: 24
   sharedTouchCooldown: 0.08
+  pointEndDelay: 2
   failSafeResetY: -8
   netPosition: {fileID: 0}
   player: {fileID: 0}
@@ -4480,14 +4481,18 @@ MonoBehaviour:
   player: {fileID: 2135475531}
   ball: {fileID: 913431725}
   netPosition: {fileID: 907978010}
+  rightBoundary: {fileID: 0}
   speed: 6
   jumpForce: 11
+  groundCheckYOffset: -0.85
   recuoDefesa: 3
   zonaLevantamento: 2
   zonaAtaque: 2
   limiteDireitaCampo: 15.5
   serveForce: 50
   serveDelay: 2
+  serveBackOffset: 0.75
+  serveRecoveryTime: 0.45
   botTouchCount: 0
   touchCooldown: 0.1
   hitRange: 1
@@ -5773,11 +5778,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 5
-  jumpForce: 14
+  jumpForce: 20
   isServing: 1
   serveForce: 30
   groundCheck: {fileID: 465151870}
   checkRadius: 0.4
+  groundCheckYOffset: -0.85
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -5788,10 +5794,10 @@ MonoBehaviour:
   playerTouchCount: 3
   hitRange: 2
   inputTouchCooldown: 0.1
-  receiveForce: 10.5
-  setForce: 30
-  sendForce: 15
-  spikeForce: 22
+  receiveForce: 25
+  setForce: 25
+  sendForce: 19
+  spikeForce: 30
   ballScript: {fileID: 913431727}
   ballHoldPoint: {fileID: 538619470}
 --- !u!70 &2135475532
