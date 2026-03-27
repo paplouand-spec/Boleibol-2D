@@ -27,10 +27,17 @@ public class PlayerController : MonoBehaviour
     public float setForce = 12.5f;
     public float sendForce = 15f;
     public float spikeForce = 22f;
+    public float blockForce = 15.5f;
+    public float blockDuration = 0.22f;
+    public float blockCooldown = 0.45f;
+    public float blockRange = 1.15f;
+    public float blockHeightOffset = 1.25f;
+    public float blockForwardOffset = 0.5f;
+    public float blockNetReach = 1.85f;
 
     [Header("Limites e Servico")]
-    public float leftBoundaryPadding = 0.8f;
-    public float serveForwardOffset = 0.75f;
+    public float serveBackOffset = 0.08f;
+    public float serveBoundaryPadding = 0.02f;
     public float limiteEsquerdoCampo = -6.5f;
 
     [Header("Referencias")]
@@ -38,20 +45,26 @@ public class PlayerController : MonoBehaviour
     public Transform ballHoldPoint;
 
     private Rigidbody2D rb;
+    private Collider2D playerCollider;
     private Animator anim;
     private bool isGrounded;
+    private bool isBlocking;
     private float lastHitInputTime = -999f;
+    private float blockEndTime = -999f;
+    private float nextAllowedBlockTime = -999f;
     private Vector3 baseScale;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        playerCollider = GetComponent<Collider2D>();
         anim = GetComponent<Animator>();
         baseScale = transform.localScale;
         rb.gravityScale = 4f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
         AutoDetectReferences();
+        IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureBallLayer();
 
@@ -67,11 +80,14 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         AutoDetectReferences();
+        IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureBallLayer();
 
         if (groundCheck != null)
             isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
+
+        UpdateBlockingState();
 
         if (anim != null)
             anim.SetBool("isGrounded", isGrounded);
@@ -80,6 +96,9 @@ public class PlayerController : MonoBehaviour
             playerTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
 
         HandleMovement();
+
+        if (isBlocking)
+            TryBlockBall();
 
         if (isServing)
         {
@@ -102,9 +121,18 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKey(KeyCode.D))
             moveInput += 1f;
 
-        rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+        if (isServing)
+            moveInput = ApplyServeMovementRestriction(moveInput);
 
-        if (moveInput > 0f)
+        if (isBlocking)
+            moveInput = Mathf.Max(0f, moveInput);
+
+        rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
+        ClampServePosition();
+
+        if (isBlocking)
+            OrientarPara(1f);
+        else if (moveInput > 0f)
             transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
         else if (moveInput < 0f)
             transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
@@ -129,6 +157,9 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.E))
             TryHitBall(false);
+
+        if (Input.GetKeyDown(KeyCode.Q))
+            TryStartBlock();
     }
 
     void Jump()
@@ -215,7 +246,7 @@ public class PlayerController : MonoBehaviour
         playerTouchCount = 0;
 
         if (ballScript != null)
-            ballScript.ReleaseServe(new Vector2(0.95f, 1.1f), serveForce);
+            ballScript.ReleaseServe(BallController.TeamSide.Player, new Vector2(0.95f, 1.1f), serveForce);
 
         if (anim != null)
             anim.SetTrigger("serveAction");
@@ -227,6 +258,7 @@ public class PlayerController : MonoBehaviour
             ballScript = targetBall;
 
         AutoDetectReferences();
+        CancelBlock();
         isServing = true;
         playerTouchCount = 0;
         lastHitInputTime = -999f;
@@ -238,6 +270,7 @@ public class PlayerController : MonoBehaviour
 
     public void StopServing()
     {
+        CancelBlock();
         isServing = false;
         playerTouchCount = 0;
         lastHitInputTime = -999f;
@@ -252,6 +285,11 @@ public class PlayerController : MonoBehaviour
     {
         float yOffset = isGrounded ? 0.75f : 1.1f;
         return (Vector2)transform.position + new Vector2(0.35f, yOffset);
+    }
+
+    Vector2 GetBlockCenter()
+    {
+        return (Vector2)transform.position + new Vector2(blockForwardOffset, blockHeightOffset);
     }
 
     void AutoDetectReferences()
@@ -295,6 +333,86 @@ public class PlayerController : MonoBehaviour
             ballLayer = 1 << ballScript.gameObject.layer;
     }
 
+    void UpdateBlockingState()
+    {
+        if (isBlocking && Time.time >= blockEndTime)
+            isBlocking = false;
+    }
+
+    void TryStartBlock()
+    {
+        if (isServing || Time.time < nextAllowedBlockTime)
+            return;
+
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        isBlocking = true;
+        blockEndTime = Time.time + blockDuration;
+        nextAllowedBlockTime = Time.time + blockCooldown;
+        OrientarPara(1f);
+
+        float appliedBlockJump = Mathf.Max(jumpForce * 0.75f, 11f);
+        if (isGrounded)
+        {
+            isGrounded = false;
+            rb.linearVelocity = new Vector2(Mathf.Max(0f, rb.linearVelocity.x), appliedBlockJump);
+        }
+        else
+        {
+            rb.linearVelocity = new Vector2(Mathf.Max(0f, rb.linearVelocity.x), Mathf.Max(rb.linearVelocity.y, appliedBlockJump * 0.55f));
+        }
+
+        if (anim != null)
+            anim.SetTrigger("block");
+
+        TryBlockBall();
+    }
+
+    void TryBlockBall()
+    {
+        if (!isBlocking || ballScript == null || ballScript.IsBeingHeld)
+            return;
+
+        if (!CanAttemptBlock(ballScript))
+            return;
+
+        if (!ballScript.TryApplyBlock(BallController.TeamSide.Player, new Vector2(1.05f, 1.15f), blockForce))
+            return;
+
+        playerTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
+        lastHitInputTime = Time.time;
+    }
+
+    bool CanAttemptBlock(BallController ball)
+    {
+        if (ball == null)
+            return false;
+
+        if (ball.LastTeamToTouch != BallController.TeamSide.Bot)
+            return false;
+
+        if (ball.Velocity.x >= -0.05f)
+            return false;
+
+        if (netPosition != null && transform.position.x < netPosition.position.x - blockNetReach)
+            return false;
+
+        Vector2 blockCenter = GetBlockCenter();
+        Vector2 ballPosition = ball.transform.position;
+
+        if (ballPosition.x < transform.position.x - 0.1f)
+            return false;
+
+        return Vector2.Distance(blockCenter, ballPosition) <= blockRange;
+    }
+
+    void CancelBlock()
+    {
+        isBlocking = false;
+        blockEndTime = -999f;
+    }
+
     void EnsureGroundCheck()
     {
         if (groundCheck != null && groundCheck.parent == transform)
@@ -327,17 +445,72 @@ public class PlayerController : MonoBehaviour
 
     float GetServePositionX()
     {
-        float minX = GetPlayableLeftLimitX();
-        float maxX = netPosition != null ? netPosition.position.x - 0.8f : transform.position.x;
-        return Mathf.Clamp(minX + serveForwardOffset, minX, maxX);
+        return GetServeMovementLimitX() - serveBackOffset;
     }
 
-    float GetPlayableLeftLimitX()
+    float GetServeBoundaryX()
     {
         if (CourtReferences.TryGetBoundaryInnerX(leftBoundary, true, out float leftLimit))
-            return leftLimit + leftBoundaryPadding;
+            return leftLimit - serveBoundaryPadding;
 
         return limiteEsquerdoCampo;
+    }
+
+    float ApplyServeMovementRestriction(float moveInput)
+    {
+        float serveMovementLimitX = GetServeMovementLimitX();
+
+        if (moveInput > 0f && transform.position.x >= serveMovementLimitX)
+            return 0f;
+
+        return moveInput;
+    }
+
+    void ClampServePosition()
+    {
+        if (!isServing)
+            return;
+
+        float serveMovementLimitX = GetServeMovementLimitX();
+        if (transform.position.x > serveMovementLimitX)
+        {
+            transform.position = new Vector3(serveMovementLimitX, transform.position.y, transform.position.z);
+            rb.linearVelocity = new Vector2(Mathf.Min(0f, rb.linearVelocity.x), rb.linearVelocity.y);
+        }
+    }
+
+    float GetServeMovementLimitX()
+    {
+        return GetServeBoundaryX() - GetColliderHalfWidth();
+    }
+
+    float GetColliderHalfWidth()
+    {
+        if (playerCollider == null)
+            playerCollider = GetComponent<Collider2D>();
+
+        return playerCollider != null ? playerCollider.bounds.extents.x : 0f;
+    }
+
+    void IgnoreBoundaryCollision()
+    {
+        if (playerCollider == null)
+            playerCollider = GetComponent<Collider2D>();
+
+        if (playerCollider == null)
+            return;
+
+        IgnoreCollisionWithBoundary(leftBoundary);
+    }
+
+    void IgnoreCollisionWithBoundary(Transform boundary)
+    {
+        if (boundary == null)
+            return;
+
+        Collider2D boundaryCollider = boundary.GetComponent<Collider2D>();
+        if (boundaryCollider != null)
+            Physics2D.IgnoreCollision(playerCollider, boundaryCollider, true);
     }
 
     void OrientarPara(float direction)

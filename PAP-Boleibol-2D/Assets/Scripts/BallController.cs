@@ -17,6 +17,8 @@ public class BallController : MonoBehaviour
     public float pointEndDelay = 2f;
     public float failSafeResetY = -8f;
     public Transform netPosition;
+    public Transform leftBoundary;
+    public Transform rightBoundary;
 
     [Header("Referencias de Jogo")]
     public PlayerController player;
@@ -29,6 +31,7 @@ public class BallController : MonoBehaviour
     private TeamSide currentTouchSide = TeamSide.None;
     private int currentTouchCount;
     private float lastTouchTime = -999f;
+    private TeamSide lastTeamToTouch = TeamSide.None;
     private bool pointEnding;
     private float pointResolveTime = -999f;
     private float pendingLandingX;
@@ -39,6 +42,7 @@ public class BallController : MonoBehaviour
     public Vector2 Velocity => rb != null ? rb.linearVelocity : Vector2.zero;
     public int PlayerScore => playerScore;
     public int BotScore => botScore;
+    public TeamSide LastTeamToTouch => lastTeamToTouch;
     public event Action<int, int> ScoreChanged;
 
     void Awake()
@@ -115,6 +119,7 @@ public class BallController : MonoBehaviour
         currentTouchCount++;
         touchNumber = currentTouchCount;
         lastTouchTime = Time.time;
+        lastTeamToTouch = team;
         return true;
     }
 
@@ -128,6 +133,7 @@ public class BallController : MonoBehaviour
     public void SetToServing(Transform targetPoint)
     {
         ResetTouches();
+        lastTeamToTouch = TeamSide.None;
         pointEnding = false;
         pointResolveTime = -999f;
         isBeingHeld = true;
@@ -141,9 +147,10 @@ public class BallController : MonoBehaviour
             ballCollider.isTrigger = true;
     }
 
-    public void ReleaseServe(Vector2 direction, float force)
+    public void ReleaseServe(TeamSide servingTeam, Vector2 direction, float force)
     {
         ResetTouches();
+        lastTeamToTouch = servingTeam;
         ReleaseFromHold();
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
@@ -156,6 +163,23 @@ public class BallController : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
+    }
+
+    public bool TryApplyBlock(TeamSide blockingTeam, Vector2 direction, float force)
+    {
+        if (isBeingHeld || pointEnding || Time.time < lastTouchTime + sharedTouchCooldown)
+            return false;
+
+        currentTouchSide = TeamSide.None;
+        currentTouchCount = 0;
+        lastTouchTime = Time.time;
+        lastTeamToTouch = blockingTeam;
+
+        ReleaseFromHold();
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
+        return true;
     }
 
     void ReleaseFromHold()
@@ -184,12 +208,11 @@ public class BallController : MonoBehaviour
 
     void ResolverPonto()
     {
-        float landingX = pendingLandingX;
-
         if (enemy != null)
             enemy.StopServing();
 
-        bool pontoDoPlayer = netPosition == null || landingX > netPosition.position.x;
+        TeamSide winningTeam = ResolveWinningTeam(pendingLandingX);
+        bool pontoDoPlayer = winningTeam == TeamSide.Player;
 
         if (pontoDoPlayer)
             playerScore++;
@@ -223,6 +246,50 @@ public class BallController : MonoBehaviour
 
         if (!CourtReferences.IsPlayableNetPosition(netPosition))
             netPosition = CourtReferences.FindNetPosition();
+
+        if (leftBoundary == null)
+            leftBoundary = CourtReferences.FindBoundary("limit L");
+
+        if (rightBoundary == null)
+            rightBoundary = CourtReferences.FindBoundary("limit R");
+    }
+
+    TeamSide ResolveWinningTeam(float landingX)
+    {
+        if (TryGetCourtBounds(out float leftLimit, out float rightLimit) && netPosition != null)
+        {
+            float netX = netPosition.position.x;
+            const float lineTolerance = 0.02f;
+
+            bool landedInsidePlayerCourt = landingX >= leftLimit - lineTolerance && landingX <= netX + lineTolerance;
+            bool landedInsideBotCourt = landingX <= rightLimit + lineTolerance && landingX >= netX - lineTolerance;
+
+            if (landedInsideBotCourt && landingX > netX)
+                return TeamSide.Player;
+
+            if (landedInsidePlayerCourt && landingX < netX)
+                return TeamSide.Bot;
+        }
+
+        if (lastTeamToTouch == TeamSide.Player)
+            return TeamSide.Bot;
+
+        if (lastTeamToTouch == TeamSide.Bot)
+            return TeamSide.Player;
+
+        return netPosition == null || landingX > netPosition.position.x
+            ? TeamSide.Player
+            : TeamSide.Bot;
+    }
+
+    bool TryGetCourtBounds(out float leftLimit, out float rightLimit)
+    {
+        leftLimit = 0f;
+        rightLimit = 0f;
+
+        return CourtReferences.TryGetBoundaryInnerX(leftBoundary, true, out leftLimit)
+            && CourtReferences.TryGetBoundaryInnerX(rightBoundary, false, out rightLimit)
+            && rightLimit > leftLimit;
     }
 
     void NotifyScoreChanged()

@@ -193,19 +193,25 @@ public class CameraFollow : MonoBehaviour
             rightBoundary = CourtReferences.FindBoundary("limit R");
 
         if (visualLeftBoundary == null)
-            visualLeftBoundary = FindNamedTransform("CameraLimitL");
+            visualLeftBoundary = FindFirstNamedTransform("CameraLimitL", "Camera Limit L", "Camara Limit L");
 
         if (visualRightBoundary == null)
-            visualRightBoundary = FindNamedTransform("CameraLimitR");
+            visualRightBoundary = FindFirstNamedTransform("CameraLimitR", "Camera Limit R", "Camara Limit R");
 
         if (visualBoundsSprite == null)
             visualBoundsSprite = FindVisualBoundsSprite();
     }
 
-    Transform FindNamedTransform(string objectName)
+    Transform FindFirstNamedTransform(params string[] objectNames)
     {
-        GameObject targetObject = GameObject.Find(objectName);
-        return targetObject != null ? targetObject.transform : null;
+        foreach (string objectName in objectNames)
+        {
+            GameObject targetObject = GameObject.Find(objectName);
+            if (targetObject != null)
+                return targetObject.transform;
+        }
+
+        return null;
     }
 
     SpriteRenderer FindVisualBoundsSprite()
@@ -215,6 +221,10 @@ public class CameraFollow : MonoBehaviour
             return namedBackground;
 
         namedBackground = FindSpriteRenderer("Background");
+        if (namedBackground != null)
+            return namedBackground;
+
+        namedBackground = FindSpriteRenderer("background");
         if (namedBackground != null)
             return namedBackground;
 

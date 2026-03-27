@@ -21,7 +21,8 @@ public class EnemyAI : MonoBehaviour
     [Header("Servico")]
     public float serveForce = 18.5f;
     public float serveDelay = 0.85f;
-    public float serveBackOffset = 0.55f;
+    public float serveBackOffset = 0.08f;
+    public float serveBoundaryPadding = 0.02f;
     public float serveRecoveryTime = 0.45f;
 
     [Header("Sistema de Toques")]
@@ -36,6 +37,7 @@ public class EnemyAI : MonoBehaviour
     public Transform groundCheck;
 
     private Rigidbody2D rb;
+    private Collider2D enemyCollider;
     private BallController ballScript;
     private bool isGrounded;
     private bool isServing;
@@ -48,10 +50,13 @@ public class EnemyAI : MonoBehaviour
 
     void Start()
     {
+        NormalizeVisualFacing();
         rb = GetComponent<Rigidbody2D>();
+        enemyCollider = GetComponent<Collider2D>();
         baseScale = transform.localScale;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         AutoDetectReferences();
+        IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureServeHoldPoint();
     }
@@ -59,6 +64,7 @@ public class EnemyAI : MonoBehaviour
     void Update()
     {
         AutoDetectReferences();
+        IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureServeHoldPoint();
 
@@ -103,7 +109,9 @@ public class EnemyAI : MonoBehaviour
 
     void HandleServe()
     {
-        OrientarPara(-1f);
+        float serveDirectionX = GetServeDirectionX();
+        OrientarPara(serveDirectionX);
+        ClampServePosition();
 
         if (ballScript == null || !ballScript.IsBeingHeld)
         {
@@ -127,7 +135,7 @@ public class EnemyAI : MonoBehaviour
         serveStartTime = -999f;
         botTouchCount = 0;
         nextAllowedBallTouchTime = Time.time + serveRecoveryTime;
-        ballScript.ReleaseServe(new Vector2(-0.95f, 1.1f), serveForce);
+        ballScript.ReleaseServe(BallController.TeamSide.Bot, new Vector2(serveDirectionX * 0.95f, 1.1f), serveForce);
     }
 
     void MoverPara(float targetX)
@@ -245,7 +253,7 @@ public class EnemyAI : MonoBehaviour
         float serveX = GetServePositionX();
         transform.position = new Vector3(serveX, transform.position.y, transform.position.z);
         rb.linearVelocity = Vector2.zero;
-        OrientarPara(-1f);
+        OrientarPara(GetServeDirectionX());
 
         isServing = true;
         botTouchCount = 0;
@@ -288,9 +296,15 @@ public class EnemyAI : MonoBehaviour
 
     float GetServePositionX()
     {
-        float minX = netPosition != null ? netPosition.position.x + 0.8f : transform.position.x;
-        float maxX = Mathf.Max(minX, GetPlayableRightLimitX());
-        return Mathf.Clamp(maxX - serveBackOffset, minX, maxX);
+        return GetServeMovementLimitX() + serveBackOffset;
+    }
+
+    float GetServeDirectionX()
+    {
+        if (netPosition == null)
+            return -1f;
+
+        return netPosition.position.x <= transform.position.x ? -1f : 1f;
     }
 
     float GetPlayableRightLimitX()
@@ -301,12 +315,58 @@ public class EnemyAI : MonoBehaviour
         return limiteDireitaCampo;
     }
 
+    float GetServeBoundaryX()
+    {
+        if (CourtReferences.TryGetBoundaryInnerX(rightBoundary, false, out float rightLimit))
+            return rightLimit + serveBoundaryPadding;
+
+        return limiteDireitaCampo;
+    }
+
+    float GetServeMovementLimitX()
+    {
+        return GetServeBoundaryX() + GetColliderHalfWidth();
+    }
+
+    void ClampServePosition()
+    {
+        if (!isServing)
+            return;
+
+        float serveMovementLimitX = GetServeMovementLimitX();
+        if (transform.position.x < serveMovementLimitX)
+        {
+            transform.position = new Vector3(serveMovementLimitX, transform.position.y, transform.position.z);
+            rb.linearVelocity = new Vector2(Mathf.Max(0f, rb.linearVelocity.x), rb.linearVelocity.y);
+        }
+    }
+
+    float GetColliderHalfWidth()
+    {
+        if (enemyCollider == null)
+            enemyCollider = GetComponent<Collider2D>();
+
+        return enemyCollider != null ? enemyCollider.bounds.extents.x : 0f;
+    }
+
     void OrientarPara(float direction)
     {
         if (direction > 0f)
             transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
         else if (direction < 0f)
             transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
+    }
+
+    void NormalizeVisualFacing()
+    {
+        float localYRotation = transform.localEulerAngles.y;
+        if (Mathf.Abs(Mathf.DeltaAngle(localYRotation, 180f)) > 0.01f)
+            return;
+
+        Vector3 normalizedScale = transform.localScale;
+        transform.localRotation = Quaternion.identity;
+        normalizedScale.x = -Mathf.Abs(normalizedScale.x);
+        transform.localScale = normalizedScale;
     }
 
     void EnsureGroundCheck()
@@ -344,5 +404,21 @@ public class EnemyAI : MonoBehaviour
 
         if (rightBoundary == null)
             rightBoundary = CourtReferences.FindBoundary("limit R");
+    }
+
+    void IgnoreBoundaryCollision()
+    {
+        if (enemyCollider == null)
+            enemyCollider = GetComponent<Collider2D>();
+
+        if (enemyCollider == null)
+            return;
+
+        if (rightBoundary == null)
+            return;
+
+        Collider2D boundaryCollider = rightBoundary.GetComponent<Collider2D>();
+        if (boundaryCollider != null)
+            Physics2D.IgnoreCollision(enemyCollider, boundaryCollider, true);
     }
 }
