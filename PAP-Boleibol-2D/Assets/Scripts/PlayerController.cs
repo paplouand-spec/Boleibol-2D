@@ -33,11 +33,26 @@ public class PlayerController : MonoBehaviour
     public float blockRange = 1.15f;
     public float blockHeightOffset = 1.25f;
     public float blockForwardOffset = 0.5f;
-    public float blockNetReach = 1.85f;
+    public float blockMinJumpForce = 4.5f;
+    public float blockJumpReductionFromNormal = 5f;
+    public float blockChargeDuration = 0.18f;
+    public float blockNearNetTolerance = 0.18f;
+    public float blockPassThroughChance = 0.22f;
+    public float blockPopUpChance = 0.43f;
+    public float blockPopUpHorizontalPush = 0.42f;
+    public float blockPopUpVerticalPush = 1.7f;
+    public float blockFlatHorizontalPush = 1.35f;
+    public float blockFlatVerticalPush = 0.24f;
+    public float perfectBlockVelocityWindow = 0.65f;
+    public float perfectBlockHeightTolerance = 0.28f;
+    public float perfectBlockForceMultiplier = 1.08f;
+    public float perfectBlockHorizontalPush = 0.22f;
+    public float perfectBlockDownwardPush = 1.75f;
 
     [Header("Limites e Servico")]
     public float serveBackOffset = 0.08f;
     public float serveBoundaryPadding = 0.02f;
+    public float netBarrierPadding = 0.08f;
     public float limiteEsquerdoCampo = -6.5f;
 
     [Header("Referencias")]
@@ -49,8 +64,11 @@ public class PlayerController : MonoBehaviour
     private Animator anim;
     private bool isGrounded;
     private bool isBlocking;
+    private bool isChargingBlock;
+    private bool blockInteractionResolved;
     private float lastHitInputTime = -999f;
     private float blockEndTime = -999f;
+    private float blockChargeStartTime = -999f;
     private float nextAllowedBlockTime = -999f;
     private Vector3 baseScale;
 
@@ -67,7 +85,6 @@ public class PlayerController : MonoBehaviour
         IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureBallLayer();
-
         if (isServing)
         {
             MoveToServePosition();
@@ -83,7 +100,6 @@ public class PlayerController : MonoBehaviour
         IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureBallLayer();
-
         if (groundCheck != null)
             isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, groundLayer);
 
@@ -102,9 +118,7 @@ public class PlayerController : MonoBehaviour
 
         if (isServing)
         {
-            if (Input.GetKeyDown(KeyCode.E))
-                PerformServe();
-
+            HandleServeInput();
             return;
         }
 
@@ -124,13 +138,14 @@ public class PlayerController : MonoBehaviour
         if (isServing)
             moveInput = ApplyServeMovementRestriction(moveInput);
 
-        if (isBlocking)
-            moveInput = Mathf.Max(0f, moveInput);
+        if (isBlocking || isChargingBlock)
+            moveInput = 0f;
 
         rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
         ClampServePosition();
+        ClampToPlayerSideOfNet();
 
-        if (isBlocking)
+        if (isBlocking || isChargingBlock)
             OrientarPara(1f);
         else if (moveInput > 0f)
             transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
@@ -158,8 +173,7 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E))
             TryHitBall(false);
 
-        if (Input.GetKeyDown(KeyCode.Q))
-            TryStartBlock();
+        UpdateBlockInput();
     }
 
     void Jump()
@@ -240,13 +254,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    void HandleServeInput()
+    {
+        if (Input.GetKeyDown(KeyCode.E))
+            PerformServe();
+    }
+
     void PerformServe()
     {
         isServing = false;
         playerTouchCount = 0;
 
         if (ballScript != null)
-            ballScript.ReleaseServe(BallController.TeamSide.Player, new Vector2(0.95f, 1.1f), serveForce);
+            ballScript.ReleaseServe(BallController.TeamSide.Player, GetServeDirection(), serveForce);
 
         if (anim != null)
             anim.SetTrigger("serveAction");
@@ -336,32 +356,61 @@ public class PlayerController : MonoBehaviour
     void UpdateBlockingState()
     {
         if (isBlocking && Time.time >= blockEndTime)
-            isBlocking = false;
+            CancelBlock();
+    }
+
+    void UpdateBlockInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Q))
+            TryStartBlock();
+
+        if (isChargingBlock && Input.GetKeyUp(KeyCode.Q))
+            ReleaseChargedBlock();
     }
 
     void TryStartBlock()
     {
-        if (isServing || Time.time < nextAllowedBlockTime)
+        if (isServing || isBlocking || isChargingBlock || Time.time < nextAllowedBlockTime)
+            return;
+
+        if (!isGrounded || !IsCloseEnoughToNetForBlock())
             return;
 
         if (rb == null)
             rb = GetComponent<Rigidbody2D>();
 
+        isChargingBlock = true;
+        blockInteractionResolved = false;
+        blockChargeStartTime = Time.time;
+        OrientarPara(1f);
+        rb.linearVelocity = new Vector2(0f, Mathf.Min(rb.linearVelocity.y, 0f));
+    }
+
+    void ReleaseChargedBlock()
+    {
+        if (!isChargingBlock)
+            return;
+
+        float chargeTime = Mathf.Clamp(Time.time - blockChargeStartTime, 0f, blockChargeDuration);
+        isChargingBlock = false;
+        blockChargeStartTime = -999f;
+
+        if (isServing || !isGrounded || !IsCloseEnoughToNetForBlock())
+            return;
+
+        if (rb == null)
+            rb = GetComponent<Rigidbody2D>();
+
+        if (rb == null)
+            return;
+
+        float normalizedCharge = blockChargeDuration <= 0.001f ? 1f : chargeTime / blockChargeDuration;
+
         isBlocking = true;
         blockEndTime = Time.time + blockDuration;
         nextAllowedBlockTime = Time.time + blockCooldown;
-        OrientarPara(1f);
-
-        float appliedBlockJump = Mathf.Max(jumpForce * 0.75f, 11f);
-        if (isGrounded)
-        {
-            isGrounded = false;
-            rb.linearVelocity = new Vector2(Mathf.Max(0f, rb.linearVelocity.x), appliedBlockJump);
-        }
-        else
-        {
-            rb.linearVelocity = new Vector2(Mathf.Max(0f, rb.linearVelocity.x), Mathf.Max(rb.linearVelocity.y, appliedBlockJump * 0.55f));
-        }
+        isGrounded = false;
+        rb.linearVelocity = new Vector2(0f, GetBlockJumpVelocity(normalizedCharge));
 
         if (anim != null)
             anim.SetTrigger("block");
@@ -371,15 +420,22 @@ public class PlayerController : MonoBehaviour
 
     void TryBlockBall()
     {
-        if (!isBlocking || ballScript == null || ballScript.IsBeingHeld)
+        if (!isBlocking || blockInteractionResolved || ballScript == null || ballScript.IsBeingHeld)
             return;
 
         if (!CanAttemptBlock(ballScript))
             return;
 
-        if (!ballScript.TryApplyBlock(BallController.TeamSide.Player, new Vector2(1.05f, 1.15f), blockForce))
+        if (!GetBlockResponse(ballScript, out Vector2 blockDirection, out float appliedBlockForce))
+        {
+            blockInteractionResolved = true;
+            return;
+        }
+
+        if (!ballScript.TryApplyBlock(BallController.TeamSide.Player, blockDirection, appliedBlockForce))
             return;
 
+        blockInteractionResolved = true;
         playerTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
         lastHitInputTime = Time.time;
     }
@@ -395,7 +451,7 @@ public class PlayerController : MonoBehaviour
         if (ball.Velocity.x >= -0.05f)
             return false;
 
-        if (netPosition != null && transform.position.x < netPosition.position.x - blockNetReach)
+        if (!IsCloseEnoughToNetForBlock())
             return false;
 
         Vector2 blockCenter = GetBlockCenter();
@@ -411,6 +467,67 @@ public class PlayerController : MonoBehaviour
     {
         isBlocking = false;
         blockEndTime = -999f;
+        isChargingBlock = false;
+        blockInteractionResolved = false;
+        blockChargeStartTime = -999f;
+    }
+
+    float GetBlockJumpVelocity(float normalizedCharge)
+    {
+        float minVelocity = Mathf.Max(blockMinJumpForce, 3f);
+        float maxVelocity = Mathf.Max(minVelocity, jumpForce - blockJumpReductionFromNormal);
+        return Mathf.Lerp(minVelocity, maxVelocity, Mathf.Clamp01(normalizedCharge));
+    }
+
+    bool GetBlockResponse(BallController ball, out Vector2 direction, out float force)
+    {
+        if (IsPerfectBlockTiming(ball))
+        {
+            direction = new Vector2(perfectBlockHorizontalPush, -perfectBlockDownwardPush);
+            force = blockForce * perfectBlockForceMultiplier;
+            return true;
+        }
+
+        float roll = Random.value;
+        if (roll < blockPassThroughChance)
+        {
+            direction = Vector2.zero;
+            force = 0f;
+            return false;
+        }
+
+        float horizontalDirection = 1f;
+        if (roll < blockPassThroughChance + blockPopUpChance)
+        {
+            direction = new Vector2(horizontalDirection * blockPopUpHorizontalPush, blockPopUpVerticalPush);
+            force = blockForce;
+            return true;
+        }
+
+        direction = new Vector2(horizontalDirection * blockFlatHorizontalPush, blockFlatVerticalPush);
+        force = blockForce * 1.05f;
+        return true;
+    }
+
+    bool IsPerfectBlockTiming(BallController ball)
+    {
+        if (ball == null || rb == null)
+            return false;
+
+        if (Mathf.Abs(rb.linearVelocity.y) > perfectBlockVelocityWindow)
+            return false;
+
+        float ballHeightOffset = Mathf.Abs(ball.transform.position.y - GetBlockCenter().y);
+        return ballHeightOffset <= perfectBlockHeightTolerance;
+    }
+
+    bool IsCloseEnoughToNetForBlock()
+    {
+        if (netPosition == null)
+            return false;
+
+        float netLimitX = netPosition.position.x - GetColliderHalfWidth() - netBarrierPadding;
+        return transform.position.x >= netLimitX - blockNearNetTolerance;
     }
 
     void EnsureGroundCheck()
@@ -479,6 +596,19 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    void ClampToPlayerSideOfNet()
+    {
+        if (netPosition == null || rb == null)
+            return;
+
+        float maxX = netPosition.position.x - GetColliderHalfWidth() - netBarrierPadding;
+        if (transform.position.x <= maxX)
+            return;
+
+        transform.position = new Vector3(maxX, transform.position.y, transform.position.z);
+        rb.linearVelocity = new Vector2(Mathf.Min(0f, rb.linearVelocity.x), rb.linearVelocity.y);
+    }
+
     float GetServeMovementLimitX()
     {
         return GetServeBoundaryX() - GetColliderHalfWidth();
@@ -519,5 +649,10 @@ public class PlayerController : MonoBehaviour
             transform.localScale = new Vector3(Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
         else if (direction < 0f)
             transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
+    }
+
+    Vector2 GetServeDirection()
+    {
+        return new Vector2(0.86f, 1.08f);
     }
 }
