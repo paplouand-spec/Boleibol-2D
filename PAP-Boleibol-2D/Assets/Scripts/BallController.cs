@@ -15,9 +15,7 @@ public class BallController : MonoBehaviour
     public float maxBallSpeed = 16.5f;
     public float sharedTouchCooldown = 0.08f;
     public float pointEndDelay = 2f;
-    public float pointBannerDelay = 0.5f;
     public float failSafeResetY = -8f;
-    public float outOfBoundsResolvePadding = 0.12f;
     public Transform netPosition;
     public Transform leftBoundary;
     public Transform rightBoundary;
@@ -36,10 +34,7 @@ public class BallController : MonoBehaviour
     private TeamSide lastTeamToTouch = TeamSide.None;
     private bool pointEnding;
     private float pointResolveTime = -999f;
-    private float pointBannerTime = -999f;
     private float pendingLandingX;
-    private TeamSide pendingWinningTeam = TeamSide.None;
-    private bool pointBannerShown;
     private int playerScore;
     private int botScore;
 
@@ -49,8 +44,6 @@ public class BallController : MonoBehaviour
     public int BotScore => botScore;
     public TeamSide LastTeamToTouch => lastTeamToTouch;
     public event Action<int, int> ScoreChanged;
-    public event Action<TeamSide> PointScored;
-    public event Action<TeamSide> PointBannerRequested;
 
     void Awake()
     {
@@ -80,12 +73,6 @@ public class BallController : MonoBehaviour
         if (!pointEnding && transform.position.y < failSafeResetY)
             IniciarFimDoPonto(transform.position.x);
 
-        if (!pointEnding && TryGetBallOutOfBoundsResolveX(out float resolveX))
-            IniciarFimDoPonto(resolveX);
-
-        if (pointEnding && !pointBannerShown && Time.time >= pointBannerTime)
-            ShowPendingPointBanner();
-
         if (pointEnding && Time.time >= pointResolveTime)
             ResolverPonto();
     }
@@ -103,17 +90,6 @@ public class BallController : MonoBehaviour
     {
         if (isBeingHeld || pointEnding)
             return;
-
-        AutoDetectReferences();
-
-        if (TryGetTouchingTeam(collision.collider, out TeamSide touchingTeam))
-            RegisterPhysicalTouch(touchingTeam);
-
-        if (TryGetBoundaryResolveX(collision.collider, out float resolveX))
-        {
-            IniciarFimDoPonto(resolveX);
-            return;
-        }
 
         if (collision.gameObject.CompareTag("Ground"))
             IniciarFimDoPonto(transform.position.x);
@@ -160,9 +136,6 @@ public class BallController : MonoBehaviour
         lastTeamToTouch = TeamSide.None;
         pointEnding = false;
         pointResolveTime = -999f;
-        pointBannerTime = -999f;
-        pendingWinningTeam = TeamSide.None;
-        pointBannerShown = false;
         isBeingHeld = true;
         holdPoint = targetPoint;
         rb.simulated = true;
@@ -209,14 +182,6 @@ public class BallController : MonoBehaviour
         return true;
     }
 
-    void RegisterPhysicalTouch(TeamSide team)
-    {
-        if (team == TeamSide.None)
-            return;
-
-        lastTeamToTouch = team;
-    }
-
     void ReleaseFromHold()
     {
         isBeingHeld = false;
@@ -234,11 +199,11 @@ public class BallController : MonoBehaviour
 
         pointEnding = true;
         pendingLandingX = landingX;
-        pendingWinningTeam = ResolveWinningTeam(landingX);
         pointResolveTime = Time.time + pointEndDelay;
-        pointBannerTime = Time.time + pointBannerDelay;
-        pointBannerShown = false;
         ResetTouches();
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.simulated = false;
     }
 
     void ResolverPonto()
@@ -246,9 +211,7 @@ public class BallController : MonoBehaviour
         if (enemy != null)
             enemy.StopServing();
 
-        TeamSide winningTeam = pendingWinningTeam != TeamSide.None
-            ? pendingWinningTeam
-            : ResolveWinningTeam(pendingLandingX);
+        TeamSide winningTeam = ResolveWinningTeam(pendingLandingX);
         bool pontoDoPlayer = winningTeam == TeamSide.Player;
 
         if (pontoDoPlayer)
@@ -257,7 +220,6 @@ public class BallController : MonoBehaviour
             botScore++;
 
         NotifyScoreChanged();
-        PointScored?.Invoke(winningTeam);
 
         if (pontoDoPlayer)
         {
@@ -272,19 +234,6 @@ public class BallController : MonoBehaviour
             if (enemy != null)
                 enemy.PrepareServe(this);
         }
-    }
-
-    void ShowPendingPointBanner()
-    {
-        if (pointBannerShown)
-            return;
-
-        TeamSide winningTeam = pendingWinningTeam != TeamSide.None
-            ? pendingWinningTeam
-            : ResolveWinningTeam(pendingLandingX);
-
-        pointBannerShown = true;
-        PointBannerRequested?.Invoke(winningTeam);
     }
 
     void AutoDetectReferences()
@@ -341,78 +290,6 @@ public class BallController : MonoBehaviour
         return CourtReferences.TryGetBoundaryInnerX(leftBoundary, true, out leftLimit)
             && CourtReferences.TryGetBoundaryInnerX(rightBoundary, false, out rightLimit)
             && rightLimit > leftLimit;
-    }
-
-    bool TryGetBallOutOfBoundsResolveX(out float resolveX)
-    {
-        resolveX = 0f;
-
-        if (!TryGetCourtBounds(out float leftLimit, out float rightLimit))
-            return false;
-
-        if (transform.position.x < leftLimit - outOfBoundsResolvePadding)
-        {
-            resolveX = leftLimit - outOfBoundsResolvePadding;
-            return true;
-        }
-
-        if (transform.position.x > rightLimit + outOfBoundsResolvePadding)
-        {
-            resolveX = rightLimit + outOfBoundsResolvePadding;
-            return true;
-        }
-
-        return false;
-    }
-
-    bool TryGetBoundaryResolveX(Collider2D collider, out float resolveX)
-    {
-        resolveX = 0f;
-        if (collider == null)
-            return false;
-
-        if (leftBoundary != null && (collider.transform == leftBoundary || collider.transform.IsChildOf(leftBoundary)))
-        {
-            if (TryGetCourtBounds(out float leftLimit, out _))
-                resolveX = leftLimit - outOfBoundsResolvePadding;
-            else
-                resolveX = leftBoundary.position.x - outOfBoundsResolvePadding;
-
-            return true;
-        }
-
-        if (rightBoundary != null && (collider.transform == rightBoundary || collider.transform.IsChildOf(rightBoundary)))
-        {
-            if (TryGetCourtBounds(out _, out float rightLimit))
-                resolveX = rightLimit + outOfBoundsResolvePadding;
-            else
-                resolveX = rightBoundary.position.x + outOfBoundsResolvePadding;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    bool TryGetTouchingTeam(Collider2D collider, out TeamSide touchingTeam)
-    {
-        touchingTeam = TeamSide.None;
-        if (collider == null)
-            return false;
-
-        if (collider.GetComponentInParent<PlayerController>() != null)
-        {
-            touchingTeam = TeamSide.Player;
-            return true;
-        }
-
-        if (collider.GetComponentInParent<EnemyAI>() != null)
-        {
-            touchingTeam = TeamSide.Bot;
-            return true;
-        }
-
-        return false;
     }
 
     void NotifyScoreChanged()

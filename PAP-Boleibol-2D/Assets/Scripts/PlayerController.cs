@@ -9,12 +9,6 @@ public class PlayerController : MonoBehaviour
 
     [Header("Servico")]
     public float serveForce = 18f;
-    public float safeServeForce = 15.5f;
-    public float faultServeForce = 19.5f;
-    public float serveMeterSpeed = 1.7f;
-    public float serveMeterYOffset = 0.25f;
-    [Range(0.05f, 0.35f)] public float serveFaultZoneWidth = 0.18f;
-    [Range(0.05f, 0.4f)] public float serveGreenZoneWidth = 0.22f;
 
     [Header("Deteccao e Fisica")]
     public Transform groundCheck;
@@ -77,17 +71,6 @@ public class PlayerController : MonoBehaviour
     private float blockChargeStartTime = -999f;
     private float nextAllowedBlockTime = -999f;
     private Vector3 baseScale;
-    private ServeChargeUI serveChargeUI;
-    private bool isChargingServe;
-    private float serveChargeNormalized = 0.5f;
-    private float serveChargeDirection = 1f;
-
-    enum ServeChargeResult
-    {
-        Fault,
-        Safe,
-        Power
-    }
 
     void Start()
     {
@@ -97,13 +80,11 @@ public class PlayerController : MonoBehaviour
         baseScale = transform.localScale;
         rb.gravityScale = 4f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        serveChargeUI = ServeChargeUI.EnsureInstance();
 
         AutoDetectReferences();
         IgnoreBoundaryCollision();
         EnsureGroundCheck();
         EnsureBallLayer();
-        ResetServeCharge();
         if (isServing)
         {
             MoveToServePosition();
@@ -111,8 +92,6 @@ public class PlayerController : MonoBehaviour
             if (ballScript != null && ballHoldPoint != null)
                 ballScript.SetToServing(ballHoldPoint);
         }
-
-        UpdateServeChargeUI();
     }
 
     void Update()
@@ -133,7 +112,6 @@ public class PlayerController : MonoBehaviour
             playerTouchCount = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
 
         HandleMovement();
-        UpdateServeChargeUI();
 
         if (isBlocking)
             TryBlockBall();
@@ -160,7 +138,7 @@ public class PlayerController : MonoBehaviour
         if (isServing)
             moveInput = ApplyServeMovementRestriction(moveInput);
 
-        if (isBlocking || isChargingBlock || isChargingServe)
+        if (isBlocking || isChargingBlock)
             moveInput = 0f;
 
         rb.linearVelocity = new Vector2(moveInput * speed, rb.linearVelocity.y);
@@ -278,67 +256,20 @@ public class PlayerController : MonoBehaviour
 
     void HandleServeInput()
     {
-        if (Input.GetKeyDown(KeyCode.E) && !isChargingServe)
-            StartServeCharge();
-
-        if (!isChargingServe)
-            return;
-
-        UpdateServeCharge();
-
-        if (Input.GetKeyUp(KeyCode.E))
-            ReleaseChargedServe();
+        if (Input.GetKeyDown(KeyCode.E))
+            PerformServe();
     }
 
-    void StartServeCharge()
-    {
-        if (!isServing)
-            return;
-
-        ResetServeCharge();
-        isChargingServe = true;
-        UpdateServeChargeUI();
-    }
-
-    void UpdateServeCharge()
-    {
-        serveChargeNormalized += serveChargeDirection * serveMeterSpeed * Time.deltaTime;
-
-        if (serveChargeNormalized >= 1f)
-        {
-            serveChargeNormalized = 1f;
-            serveChargeDirection = -1f;
-        }
-        else if (serveChargeNormalized <= 0f)
-        {
-            serveChargeNormalized = 0f;
-            serveChargeDirection = 1f;
-        }
-    }
-
-    void ReleaseChargedServe()
-    {
-        if (!isChargingServe)
-            return;
-
-        isChargingServe = false;
-        PerformServe(EvaluateServeCharge(serveChargeNormalized));
-    }
-
-    void PerformServe(ServeChargeResult serveResult)
+    void PerformServe()
     {
         isServing = false;
-        isChargingServe = false;
         playerTouchCount = 0;
 
         if (ballScript != null)
-            ballScript.ReleaseServe(BallController.TeamSide.Player, GetServeDirection(serveResult), GetServeForce(serveResult));
+            ballScript.ReleaseServe(BallController.TeamSide.Player, GetServeDirection(), serveForce);
 
         if (anim != null)
             anim.SetTrigger("serveAction");
-
-        ResetServeCharge();
-        UpdateServeChargeUI(true);
     }
 
     public void PrepareServe(BallController targetBall)
@@ -351,13 +282,10 @@ public class PlayerController : MonoBehaviour
         isServing = true;
         playerTouchCount = 0;
         lastHitInputTime = -999f;
-        ResetServeCharge();
         MoveToServePosition();
 
         if (ballScript != null && ballHoldPoint != null)
             ballScript.SetToServing(ballHoldPoint);
-
-        UpdateServeChargeUI();
     }
 
     public void StopServing()
@@ -366,8 +294,6 @@ public class PlayerController : MonoBehaviour
         isServing = false;
         playerTouchCount = 0;
         lastHitInputTime = -999f;
-        ResetServeCharge();
-        UpdateServeChargeUI(true);
     }
 
     bool BolaNoLadoDoPlayer(float ballX)
@@ -725,68 +651,8 @@ public class PlayerController : MonoBehaviour
             transform.localScale = new Vector3(-Mathf.Abs(baseScale.x), baseScale.y, baseScale.z);
     }
 
-    void ResetServeCharge()
+    Vector2 GetServeDirection()
     {
-        isChargingServe = false;
-        serveChargeNormalized = 0.5f;
-        serveChargeDirection = 1f;
-    }
-
-    ServeChargeResult EvaluateServeCharge(float normalizedValue)
-    {
-        float clampedValue = Mathf.Clamp01(normalizedValue);
-        float halfGreenZone = serveGreenZoneWidth * 0.5f;
-
-        if (clampedValue <= serveFaultZoneWidth || clampedValue >= 1f - serveFaultZoneWidth)
-            return ServeChargeResult.Fault;
-
-        if (Mathf.Abs(clampedValue - 0.5f) <= halfGreenZone)
-            return ServeChargeResult.Power;
-
-        return ServeChargeResult.Safe;
-    }
-
-    void UpdateServeChargeUI(bool forceHide = false)
-    {
-        if (serveChargeUI == null)
-            serveChargeUI = ServeChargeUI.EnsureInstance();
-
-        if (serveChargeUI == null)
-            return;
-
-        bool shouldShow = !forceHide && isServing && isChargingServe;
-        serveChargeUI.SetVisible(shouldShow);
-
-        if (!shouldShow)
-            return;
-
-        serveChargeUI.SetFollowTarget(transform, playerCollider, serveMeterYOffset);
-        serveChargeUI.SetMarkerNormalized(serveChargeNormalized);
-    }
-
-    float GetServeForce(ServeChargeResult serveResult)
-    {
-        switch (serveResult)
-        {
-            case ServeChargeResult.Fault:
-                return faultServeForce;
-            case ServeChargeResult.Safe:
-                return safeServeForce;
-            default:
-                return serveForce;
-        }
-    }
-
-    Vector2 GetServeDirection(ServeChargeResult serveResult)
-    {
-        switch (serveResult)
-        {
-            case ServeChargeResult.Fault:
-                return new Vector2(1.22f, 0.72f);
-            case ServeChargeResult.Safe:
-                return new Vector2(0.68f, 1.34f);
-            default:
-                return new Vector2(0.86f, 1.08f);
-        }
+        return new Vector2(0.86f, 1.08f);
     }
 }

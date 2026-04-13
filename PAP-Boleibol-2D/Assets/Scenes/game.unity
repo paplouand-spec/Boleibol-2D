@@ -2524,9 +2524,7 @@ MonoBehaviour:
   maxBallSpeed: 24
   sharedTouchCooldown: 0.08
   pointEndDelay: 2
-  pointBannerDelay: 0.5
   failSafeResetY: -8
-  outOfBoundsResolvePadding: 0.12
   netPosition: {fileID: 907978010}
   leftBoundary: {fileID: 235479773}
   rightBoundary: {fileID: 326334830}
@@ -4372,7 +4370,6 @@ GameObject:
   - component: {fileID: 1684366395}
   - component: {fileID: 1684366399}
   - component: {fileID: 1684366398}
-  - component: {fileID: 1684366400}
   m_Layer: 0
   m_Name: enemy
   m_TagString: Untagged
@@ -4498,58 +4495,25 @@ MonoBehaviour:
   netPosition: {fileID: 907978010}
   rightBoundary: {fileID: 326334830}
   speed: 6
-  jumpForce: 14
+  jumpForce: 11
   groundCheckYOffset: -0.85
-  recuoDefesa: 2
+  recuoDefesa: 3
   zonaLevantamento: 2
   zonaAtaque: 2
   limiteDireitaCampo: 15.5
   rightBoundaryPadding: 0.8
-  netBarrierPadding: 0.08
-  sprintMultiplier: 1.35
-  antecipacaoBola: 0.6
-  alturaLeituraRececao: 0.95
-  velocidadeQuedaUrgente: -2.2
-  distanciaTravagem: 0.12
-  targetSmoothing: 0.28
-  targetDeadZone: 0.1
-  serveForce: 25
+  serveForce: 27
   serveDelay: 2
   serveBackOffset: 0.08
   serveBoundaryPadding: 0.02
   serveRecoveryTime: 0.45
   botTouchCount: 0
   touchCooldown: 0.1
-  hitRange: 2
+  hitRange: 1
   receiveForce: 20
   setForce: 25
   sendForce: 15
   spikeForce: 70
-  blockForce: 15.5
-  blockDuration: 0.22
-  blockCooldown: 0.45
-  blockRange: 1.15
-  blockHeightOffset: 1.25
-  blockForwardOffset: 0.5
-  blockMinJumpForce: 4.5
-  blockJumpReductionFromNormal: 5
-  blockChargeDuration: 0.18
-  blockNearNetTolerance: 0.18
-  blockThreatPlayerNetDistance: 1.4
-  blockThreatMinHorizontalSpeed: 3.8
-  blockThreatMaxRiseVelocity: 0.95
-  blockThreatExtraReactionTime: 0.16
-  blockPassThroughChance: 0.22
-  blockPopUpChance: 0.43
-  blockPopUpHorizontalPush: 0.42
-  blockPopUpVerticalPush: 1.7
-  blockFlatHorizontalPush: 1.35
-  blockFlatVerticalPush: 0.24
-  perfectBlockVelocityWindow: 0.65
-  perfectBlockHeightTolerance: 0.28
-  perfectBlockForceMultiplier: 1.08
-  perfectBlockHorizontalPush: 0.22
-  perfectBlockDownwardPush: 1.75
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
@@ -4591,28 +4555,6 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 0}
   m_Size: {x: 1.3749999, y: 2.1249998}
   m_Direction: 0
---- !u!95 &1684366400
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1684366394}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 0dc9bc168ffa0b944a759880c12db714, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &1695054014
 GameObject:
   m_ObjectHideFlags: 0
@@ -5850,15 +5792,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   speed: 5
-  jumpForce: 22
+  jumpForce: 20
   isServing: 1
   serveForce: 25
-  safeServeForce: 15.5
-  faultServeForce: 19.5
-  serveMeterSpeed: 1.7
-  serveMeterYOffset: 0.25
-  serveFaultZoneWidth: 0.18
-  serveGreenZoneWidth: 0.22
   groundCheck: {fileID: 465151870}
   checkRadius: 0.4
   groundCheckYOffset: -0.85
@@ -5871,36 +5807,21 @@ MonoBehaviour:
   netPosition: {fileID: 907978010}
   leftBoundary: {fileID: 235479773}
   playerTouchCount: 3
-  hitRange: 1.1
+  hitRange: 2
   inputTouchCooldown: 0.1
-  receiveForce: 23
-  setForce: 25
+  receiveForce: 21
+  setForce: 21
   sendForce: 19
   spikeForce: 30
-  blockForce: 10
-  blockDuration: 1
-  blockCooldown: 0.1
-  blockRange: 0.4
+  blockForce: 17
+  blockDuration: 0.22
+  blockCooldown: 0.45
+  blockRange: 1.15
   blockHeightOffset: 1.25
   blockForwardOffset: 0.5
-  blockMinJumpForce: 4.5
-  blockJumpReductionFromNormal: 4
-  blockChargeDuration: 0.18
-  blockNearNetTolerance: 0.18
-  blockPassThroughChance: 0.22
-  blockPopUpChance: 0.43
-  blockPopUpHorizontalPush: 0.42
-  blockPopUpVerticalPush: 1.7
-  blockFlatHorizontalPush: 1.35
-  blockFlatVerticalPush: 0.24
-  perfectBlockVelocityWindow: 0.65
-  perfectBlockHeightTolerance: 0.28
-  perfectBlockForceMultiplier: 1.08
-  perfectBlockHorizontalPush: 0.22
-  perfectBlockDownwardPush: 1.75
+  blockNetReach: 1.85
   serveBackOffset: 0.08
   serveBoundaryPadding: 0.02
-  netBarrierPadding: 0.08
   limiteEsquerdoCampo: -6.5
   ballScript: {fileID: 913431727}
   ballHoldPoint: {fileID: 538619470}
