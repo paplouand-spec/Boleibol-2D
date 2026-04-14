@@ -64,6 +64,7 @@ public class BallController : MonoBehaviour
     void Start()
     {
         AutoDetectReferences();
+        ScoreDisplayUI.EnsureInstance();
         NotifyScoreChanged();
     }
 

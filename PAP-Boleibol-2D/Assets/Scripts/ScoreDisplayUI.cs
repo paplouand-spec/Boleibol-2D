@@ -42,14 +42,20 @@ public class ScoreDisplayUI : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void CreateScoreDisplay()
     {
-        if (FindObjectOfType<ScoreDisplayUI>() != null)
-            return;
+        EnsureInstance();
+    }
+
+    public static ScoreDisplayUI EnsureInstance()
+    {
+        ScoreDisplayUI existingDisplay = FindObjectOfType<ScoreDisplayUI>();
+        if (existingDisplay != null)
+            return existingDisplay;
 
         if (FindObjectOfType<BallController>() == null)
-            return;
+            return null;
 
         GameObject displayObject = new GameObject(nameof(ScoreDisplayUI));
-        displayObject.AddComponent<ScoreDisplayUI>();
+        return displayObject.AddComponent<ScoreDisplayUI>();
     }
 
     void Start()
