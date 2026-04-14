@@ -36,7 +36,7 @@ public class EnemyAI : MonoBehaviour
     [Header("Sistema de Toques")]
     public int botTouchCount = 0;
     public float touchCooldown = 0.06f;
-    public float hitRange = 2.35f;
+    public float hitRange = 1f;
     public float receiveForce = 8.75f;
     public float setForce = 11.75f;
     public float sendForce = 12.75f;
@@ -913,8 +913,8 @@ public class EnemyAI : MonoBehaviour
 
     Vector2 GetServeDirection(float serveDirectionX)
     {
-        float horizontal = Random.Range(0.82f, 0.92f);
-        float vertical = Random.Range(0.98f, 1.12f);
+        float horizontal = Random.Range(0.78f, 0.88f);
+        float vertical = Random.Range(1.18f, 1.34f);
         return new Vector2(serveDirectionX * horizontal, vertical);
     }
 

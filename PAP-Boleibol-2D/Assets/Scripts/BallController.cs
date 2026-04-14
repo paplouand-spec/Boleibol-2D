@@ -18,6 +18,7 @@ public class BallController : MonoBehaviour
     public float pointBannerDelay = 0.5f;
     public float failSafeResetY = -8f;
     public float outOfBoundsResolvePadding = 0.12f;
+    public float serveLaunchProtectionDuration = 0.12f;
     public Transform netPosition;
     public Transform leftBoundary;
     public Transform rightBoundary;
@@ -40,6 +41,7 @@ public class BallController : MonoBehaviour
     private float pendingLandingX;
     private TeamSide pendingWinningTeam = TeamSide.None;
     private bool pointBannerShown;
+    private float serveLaunchProtectionUntil = -999f;
     private int playerScore;
     private int botScore;
 
@@ -80,7 +82,7 @@ public class BallController : MonoBehaviour
         if (!pointEnding && transform.position.y < failSafeResetY)
             IniciarFimDoPonto(transform.position.x);
 
-        if (!pointEnding && TryGetBallOutOfBoundsResolveX(out float resolveX))
+        if (!pointEnding && !IsServeLaunchProtected() && TryGetBallOutOfBoundsResolveX(out float resolveX))
             IniciarFimDoPonto(resolveX);
 
         if (pointEnding && !pointBannerShown && Time.time >= pointBannerTime)
@@ -108,6 +110,9 @@ public class BallController : MonoBehaviour
 
         if (TryGetTouchingTeam(collision.collider, out TeamSide touchingTeam))
             RegisterPhysicalTouch(touchingTeam);
+
+        if (IsServeLaunchProtected())
+            return;
 
         if (TryGetBoundaryResolveX(collision.collider, out float resolveX))
         {
@@ -179,6 +184,8 @@ public class BallController : MonoBehaviour
         ResetTouches();
         lastTeamToTouch = servingTeam;
         ReleaseFromHold();
+        SnapServeInsideCourt(servingTeam);
+        serveLaunchProtectionUntil = Time.time + serveLaunchProtectionDuration;
         rb.linearVelocity = Vector2.zero;
         rb.angularVelocity = 0f;
         rb.AddForce(direction.normalized * force, ForceMode2D.Impulse);
@@ -225,6 +232,37 @@ public class BallController : MonoBehaviour
 
         if (ballCollider != null)
             ballCollider.isTrigger = false;
+    }
+
+    bool IsServeLaunchProtected()
+    {
+        return Time.time < serveLaunchProtectionUntil;
+    }
+
+    void SnapServeInsideCourt(TeamSide servingTeam)
+    {
+        if (!TryGetCourtBounds(out float leftLimit, out float rightLimit))
+            return;
+
+        float horizontalMargin = GetBallHorizontalExtent() + 0.02f;
+        Vector3 ballPosition = transform.position;
+
+        if (servingTeam == TeamSide.Player)
+            ballPosition.x = Mathf.Max(ballPosition.x, leftLimit + horizontalMargin);
+        else if (servingTeam == TeamSide.Bot)
+            ballPosition.x = Mathf.Min(ballPosition.x, rightLimit - horizontalMargin);
+
+        transform.position = ballPosition;
+        if (rb != null)
+            rb.position = ballPosition;
+    }
+
+    float GetBallHorizontalExtent()
+    {
+        if (ballCollider == null)
+            ballCollider = GetComponent<Collider2D>();
+
+        return ballCollider != null ? ballCollider.bounds.extents.x : 0f;
     }
 
     void IniciarFimDoPonto(float landingX)

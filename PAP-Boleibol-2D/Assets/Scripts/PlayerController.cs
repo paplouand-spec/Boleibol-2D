@@ -27,7 +27,8 @@ public class PlayerController : MonoBehaviour
 
     [Header("Sistema de Voleibol")]
     public int playerTouchCount = 0;
-    public float hitRange = 2.1f;
+    public float hitRange = 1.3f;
+    public float firstTouchHitRange = 1.3f;
     public float inputTouchCooldown = 0.1f;
     public float receiveForce = 10.5f;
     public float setForce = 12.5f;
@@ -212,14 +213,19 @@ public class PlayerController : MonoBehaviour
         if (ballScript == null || Time.time < lastHitInputTime + inputTouchCooldown)
             return;
 
-        BallController ball = GetTargetBallInRange();
+        int currentTouches = ballScript.GetTouchCountFor(BallController.TeamSide.Player);
+        float allowedHitRange = spikeInput
+            ? Mathf.Max(hitRange, 1.35f)
+            : currentTouches == 0
+                ? firstTouchHitRange
+                : hitRange;
+
+        BallController ball = GetTargetBallInRange(allowedHitRange);
         if (ball == null || ball.IsBeingHeld)
             return;
 
         if (!BolaNoLadoDoPlayer(ball.transform.position.x))
             return;
-
-        int currentTouches = ball.GetTouchCountFor(BallController.TeamSide.Player);
 
         if (spikeInput)
         {
@@ -370,12 +376,12 @@ public class PlayerController : MonoBehaviour
         UpdateServeChargeUI(true);
     }
 
-    bool BolaNoLadoDoPlayer(float ballX)
+    bool BolaNoLadoDoPlayer(float ballX, int currentTouches = 0)
     {
         return netPosition == null || ballX <= netPosition.position.x + 0.45f;
     }
 
-    Vector2 GetHitCenter()
+    Vector2 GetHitCenter(BallController ball = null, int currentTouches = 0, bool spikeInput = false)
     {
         float yOffset = isGrounded ? 0.75f : 1.1f;
         return (Vector2)transform.position + new Vector2(0.35f, yOffset);
@@ -398,27 +404,28 @@ public class PlayerController : MonoBehaviour
             leftBoundary = CourtReferences.FindBoundary("limit L");
     }
 
-    BallController GetTargetBallInRange()
+    BallController GetTargetBallInRange(float allowedHitRange)
     {
-        Vector2 hitCenter = GetHitCenter();
-
-        if (ballLayer.value != 0)
-        {
-            Collider2D detectedCollider = Physics2D.OverlapCircle(hitCenter, hitRange, ballLayer);
-            if (detectedCollider != null)
-            {
-                BallController detectedBall = detectedCollider.GetComponent<BallController>();
-                if (detectedBall != null)
-                    return detectedBall;
-            }
-        }
-
         if (ballScript == null)
             return null;
 
-        return Vector2.Distance(hitCenter, ballScript.transform.position) <= hitRange
+        return GetBallDistanceToHitCenter(ballScript) <= allowedHitRange
             ? ballScript
             : null;
+    }
+
+    float GetBallDistanceToHitCenter(BallController ball, int currentTouches = 0, bool spikeInput = false)
+    {
+        if (ball == null)
+            return float.MaxValue;
+
+        Vector2 hitCenter = GetHitCenter(ball, currentTouches, spikeInput);
+        Collider2D ballCollider = ball.GetComponent<Collider2D>();
+        Vector2 closestPoint = ballCollider != null
+            ? ballCollider.ClosestPoint(hitCenter)
+            : (Vector2)ball.transform.position;
+
+        return Vector2.Distance(hitCenter, closestPoint);
     }
 
     void EnsureBallLayer()
